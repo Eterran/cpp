@@ -14,6 +14,34 @@ set(CMAKE_CXX_EXTENSIONS OFF) # Avoid compiler-specific extensions
 # Define the name of your executable
 set(EXECUTABLE_NAME backtest)
 
+# --- Find ONNX Runtime ---
+# !! ADJUST THIS PATH !! Set ONNXRUNTIME_ROOT to where you extracted ONNX Runtime
+# You can set this as an environment variable OR uncomment and set it here:
+# set(ONNXRUNTIME_ROOT "E:/onnxruntime/onnxruntime-win-x64-1.18.0") # Example Path
+
+if(NOT DEFINED ENV{ONNXRUNTIME_ROOT} AND NOT DEFINED ONNXRUNTIME_ROOT)
+    message(FATAL_ERROR "ONNXRUNTIME_ROOT environment variable or CMake variable is not set. Please point it to your ONNX Runtime installation.")
+endif()
+
+# Use the ENV variable if defined, otherwise use the CMake variable
+if(DEFINED ENV{ONNXRUNTIME_ROOT})
+    set(ORT_ROOT $ENV{ONNXRUNTIME_ROOT})
+else()
+    set(ORT_ROOT ${ONNXRUNTIME_ROOT})
+endif()
+
+message(STATUS "Using ONNX Runtime from: ${ORT_ROOT}")
+
+find_path(ONNXRUNTIME_INCLUDE_DIR NAMES onnxruntime_cxx_api.h PATHS "${ORT_ROOT}/include")
+find_library(ONNXRUNTIME_LIBRARY NAMES onnxruntime PATHS "${ORT_ROOT}/lib")
+
+if(NOT ONNXRUNTIME_INCLUDE_DIR OR NOT ONNXRUNTIME_LIBRARY)
+    message(FATAL_ERROR "Could not find ONNX Runtime include or library files in ${ORT_ROOT}")
+endif()
+
+message(STATUS "Found ONNX Runtime Include Dir: ${ONNXRUNTIME_INCLUDE_DIR}")
+message(STATUS "Found ONNX Runtime Library: ${ONNXRUNTIME_LIBRARY}")
+
 # --- Find Source Files ---
 # Use globbing to automatically find all .cpp files in the src directory
 # WARNING: If you add/remove source files, you need to re-run CMake

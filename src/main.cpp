@@ -2,7 +2,7 @@
 #include "Config.h"
 #include "BacktestEngine.h"
 #include "SmaCrossStrategy.h"
-#include "RandomStrategy.h"
+#include "RandomStrategy50.h"
 #include "Utils.h"
 #include <iostream>
 #include <memory>
@@ -51,7 +51,7 @@ int main() {
 
     // 4. Create and Set Strategy
     //    (Engine passes its config pointer to the strategy during setup)
-    auto strategy = std::make_unique<RandomStrategy>();
+    auto strategy = std::make_unique<RandomStrategy50>();
     Utils::logMessage("Main: Creating " + strategy->getName() + " strategy.");
     engine->setStrategy(std::move(strategy));
 

@@ -40,10 +40,10 @@ void Config::setDefaultValues() {
         {"Broker", {
             {"STARTING_CASH", 1000.0},
             {"LEVERAGE", 100.0},
-            {"COMMISSION_RATE", 0.0}
+            {"COMMISSION_RATE", 0.06}
         }},
         {"Strategy", {
-            {"STRATEGY_NAME", "SmaCross"},
+            {"STRATEGY_NAME", "Random"},
             {"DEBUG_MODE", false},
             {"SMA_PERIOD", 36000},
             {"POSITION_TYPE", "fixed"}, // "fixed", "percent", "risk"
@@ -71,13 +71,13 @@ bool Config::loadFromFile(const std::string& filename) {
         Utils::logMessage("Config: Creating default config file...");
         setDefaultValues(); // Ensure defaults are loaded in memory
         if (saveToFile(filename)) { // Attempt to save the defaults
-             Utils::logMessage("Config: Default config file created successfully at '" + filename + "'.");
-             // Continue using default values loaded in memory
-             return true; // Consider this a "success" as defaults are now active and saved
+            Utils::logMessage("Config: Default config file created successfully at '" + filename + "'.");
+            // Continue using default values loaded in memory
+            return true; // Consider this a "success" as defaults are now active and saved
         } else {
-             Utils::logMessage("Config Error: Failed to create default config file at '" + filename + "'. Using internal defaults.");
-             // Continue using default values loaded in memory, but file doesn't exist
-             return false; // Indicate failure to load/create persisted config
+            Utils::logMessage("Config Error: Failed to create default config file at '" + filename + "'. Using internal defaults.");
+            // Continue using default values loaded in memory, but file doesn't exist
+            return false; // Indicate failure to load/create persisted config
         }
     }
 
@@ -106,11 +106,11 @@ bool Config::loadFromFile(const std::string& filename) {
         setDefaultValues(); // Reset to defaults on parse error
         return false;
     } catch (const std::exception& e) {
-         Utils::logMessage("Config Error: An unexpected error occurred loading config '" + filename + "': " + e.what());
-         Utils::logMessage("  Using internal default values.");
-          if(ifs.is_open()) ifs.close();
-         setDefaultValues(); // Reset to defaults
-         return false;
+        Utils::logMessage("Config Error: An unexpected error occurred loading config '" + filename + "': " + e.what());
+        Utils::logMessage("  Using internal default values.");
+        if(ifs.is_open()) ifs.close();
+        setDefaultValues(); // Reset to defaults
+        return false;
     }
 }
 

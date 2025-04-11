@@ -21,7 +21,6 @@ DataLoader::DataLoader(const Config& cfg) :
     }
 }
 
-
 // Helper to count lines (implementation remains the same)
 long long DataLoader::countLines() const {
      if (filePath.empty()) return -1;

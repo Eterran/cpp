@@ -41,9 +41,9 @@ void Broker::setStrategy(Strategy* strat) {
     strategy = strat;
 }
 
-void Broker::setPipPoint(const std::string& symbol, double pips) {
-    pipPoints[symbol] = pips;
-    Utils::logMessage("Broker: Set pip point for " + symbol + " to " + std::to_string(pips));
+void Broker::setPointValue(const std::string& symbol, double points) {
+    pointValues[symbol] = points;
+    Utils::logMessage("Broker: Set point value for " + symbol + " to " + std::to_string(points));
 }
 
 // --- Helpers ---
@@ -69,14 +69,14 @@ double Broker::calculateCommission(double size) const {
     return std::abs(size) * commissionRate;
 }
 
-double Broker::getPipPoint(const std::string& symbol) const { // Keep it const
-    auto it = pipPoints.find(symbol);
-    if (it != pipPoints.end()) {
+double Broker::getPointValue(const std::string& symbol) const { // Keep it const
+    auto it = pointValues.find(symbol);
+    if (it != pointValues.end()) {
         return it->second; // Return stored value
     }
-    // Pip point not found in map, calculate default but DO NOT store it here
-    Utils::logMessage("Broker Warning: Pip point not explicitly set for symbol '" + symbol + "'. Using default calculation.");
-    return Utils::calculatePipPoint(symbol); // Return calculated default
+    // Point value not found in map, calculate default but DO NOT store it here
+    Utils::logMessage("Broker Warning: Point value not explicitly set for symbol '" + symbol + "'. Using default calculation.");
+    return Utils::calculatePipPoint(symbol); // Return calculated default (function name needs updating in Utils)
 }
 
 
@@ -208,21 +208,21 @@ void Broker::processOrders(const Bar& currentBar) {
             if ((order.type == OrderType::SELL && existingPosition->size > 0) ||
                 (order.type == OrderType::BUY && existingPosition->size < 0))
             {
-                 // Check if size matches or exceeds existing position size (allow partial close later?)
-                 if (order.requestedSize >= std::abs(existingPosition->size)) {
-                      isClosingOrder = true;
-                      // Adjust order size to exactly match position size if it exceeds it
-                      // This prevents accidentally opening an opposite position immediately
-                      // Note: In reality, overfills might happen or partial fills. Simple model assumes exact fill up to requested size.
-                      order.requestedSize = std::abs(existingPosition->size);
-                      orderValue = order.requestedSize * fillPrice; // Recalculate value based on adjusted size
-                      commission = calculateCommission(order.requestedSize); // Recalculate commission
-                      // Margin check might not be needed for *closing* trades in some brokers, but check anyway for consistency
-                      marginNeeded = 0; // Typically no additional margin for closing
-                 } else {
-                       // TODO: Handle partial closes if needed. For now, assume full close orders.
-                       Utils::logMessage("Broker Info: Order " + std::to_string(order.id) + " is a partial close. Not implemented, treating as new position attempt.");
-                 }
+                // Check if size matches or exceeds existing position size (allow partial close later?)
+                if (order.requestedSize >= std::abs(existingPosition->size)) {
+                    isClosingOrder = true;
+                    // Adjust order size to exactly match position size if it exceeds it
+                    // This prevents accidentally opening an opposite position immediately
+                    // Note: In reality, overfills might happen or partial fills. Simple model assumes exact fill up to requested size.
+                    order.requestedSize = std::abs(existingPosition->size);
+                    orderValue = order.requestedSize * fillPrice; // Recalculate value based on adjusted size
+                    commission = calculateCommission(order.requestedSize); // Recalculate commission
+                    // Margin check might not be needed for *closing* trades in some brokers, but check anyway for consistency
+                    marginNeeded = 0; // Typically no additional margin for closing
+                } else {
+                    // TODO: Handle partial closes if needed. For now, assume full close orders.
+                    Utils::logMessage("Broker Info: Order " + std::to_string(order.id) + " is a partial close. Not implemented, treating as new position attempt.");
+                }
             }
         }
 
@@ -230,32 +230,32 @@ void Broker::processOrders(const Bar& currentBar) {
         // --- Perform Checks (Margin & Cash) ---
         bool checksPassed = true;
         if (!isClosingOrder) { // Only check margin/cash for opening new positions
-             if (marginNeeded > cash) { // Check margin FIRST
+            if (marginNeeded > cash) { // Check margin FIRST
                 Utils::logMessage("Broker: Order " + std::to_string(order.id) + " REJECTED (Margin). Needed: " + std::to_string(marginNeeded) + ", Available Cash: " + std::to_string(cash));
                 order.status = OrderStatus::MARGIN;
                 checksPassed = false;
-             } else if (commission > cash - marginNeeded) { // Check if cash covers commission AFTER reserving margin
-                  Utils::logMessage("Broker: Order " + std::to_string(order.id) + " REJECTED (Cash for Commission). Commission: " + std::to_string(commission) + ", Cash after Margin: " + std::to_string(cash - marginNeeded));
-                  order.status = OrderStatus::REJECTED; // Generic rejection if not margin specific
-                  checksPassed = false;
-             }
-              // Note: A more realistic check would be marginNeeded + commission <= cash,
-              // or even stricter depending on broker rules. Let's use the stricter check.
-              /*
-              if (marginNeeded + commission > cash) {
-                   Utils::logMessage("Broker: Order " + std::to_string(order.id) + " REJECTED (Margin + Commission). Needed: " + std::to_string(marginNeeded + commission) + ", Cash: " + std::to_string(cash));
-                    order.status = OrderStatus::MARGIN; // Or REJECTED
-                    checksPassed = false;
-              }
-              */
+            } else if (commission > cash - marginNeeded) { // Check if cash covers commission AFTER reserving margin
+                Utils::logMessage("Broker: Order " + std::to_string(order.id) + " REJECTED (Cash for Commission). Commission: " + std::to_string(commission) + ", Cash after Margin: " + std::to_string(cash - marginNeeded));
+                order.status = OrderStatus::REJECTED; // Generic rejection if not margin specific
+                checksPassed = false;
+            }
+            // Note: A more realistic check would be marginNeeded + commission <= cash,
+            // or even stricter depending on broker rules. Let's use the stricter check.
+            /*
+            if (marginNeeded + commission > cash) {
+                Utils::logMessage("Broker: Order " + std::to_string(order.id) + " REJECTED (Margin + Commission). Needed: " + std::to_string(marginNeeded + commission) + ", Cash: " + std::to_string(cash));
+                order.status = OrderStatus::MARGIN; // Or REJECTED
+                checksPassed = false;
+            }
+            */
 
         } else {
-             // Closing order: check if cash covers commission
-             if (commission > cash) {
-                  Utils::logMessage("Broker: Order " + std::to_string(order.id) + " REJECTED (Cash for Commission on Closing). Needed: " + std::to_string(commission) + ", Cash: " + std::to_string(cash));
-                   order.status = OrderStatus::REJECTED;
-                   checksPassed = false;
-             }
+            // Closing order: check if cash covers commission
+            if (commission > cash) {
+                Utils::logMessage("Broker: Order " + std::to_string(order.id) + " REJECTED (Cash for Commission on Closing). Needed: " + std::to_string(commission) + ", Cash: " + std::to_string(cash));
+                order.status = OrderStatus::REJECTED;
+                checksPassed = false;
+            }
         }
 
 
@@ -282,7 +282,7 @@ void Broker::processOrders(const Bar& currentBar) {
                 // double marginAtEntry = calculateMarginNeeded(existingPosition->size, existingPosition->entryPrice);
                 // cash += marginAtEntry; // This part is tricky and depends on exact margin model. Omit for simplicity now.
 
-                 Utils::logMessage("Broker: Closing position " + order.symbol + ". Size: " + std::to_string(existingPosition->size)
+                Utils::logMessage("Broker: Closing position " + order.symbol + ". Size: " + std::to_string(existingPosition->size)
                                      + ", Entry: " + std::to_string(existingPosition->entryPrice)
                                      + ", Exit: " + std::to_string(fillPrice)
                                      + ", PnL: " + std::to_string(pnl)
@@ -291,16 +291,15 @@ void Broker::processOrders(const Bar& currentBar) {
                 // Remove position
                 positions.erase(order.symbol);
 
-
             } else { // Opening new position or increasing existing one (not handled yet)
                 if (existingPosition) {
-                     // Increasing position size - TODO if needed
-                     Utils::logMessage("Broker Warning: Increasing position size not fully implemented.");
-                     // Simple addition for now:
-                     // cash -= (order.type == OrderType::BUY ? orderValue : -orderValue); // Adjust cash by value only if NOT using margin for this part? Confusing.
-                     // Recalculate average entry price?
-                     // existingPosition->entryPrice = ((existingPosition->size * existingPosition->entryPrice) + (order.filledSize * order.filledPrice)) / (existingPosition->size + order.filledSize);
-                     // existingPosition->size += order.filledSize; // Adjust size
+                    // Increasing position size - TODO if needed
+                    Utils::logMessage("Broker Warning: Increasing position size not fully implemented.");
+                    // Simple addition for now:
+                    // cash -= (order.type == OrderType::BUY ? orderValue : -orderValue); // Adjust cash by value only if NOT using margin for this part? Confusing.
+                    // Recalculate average entry price?
+                    // existingPosition->entryPrice = ((existingPosition->size * existingPosition->entryPrice) + (order.filledSize * order.filledPrice)) / (existingPosition->size + order.filledSize);
+                    // existingPosition->size += order.filledSize; // Adjust size
                 } else {
                     // Create new position
                     Position newPos;
@@ -309,16 +308,15 @@ void Broker::processOrders(const Bar& currentBar) {
                     newPos.size = (order.type == OrderType::BUY) ? order.filledSize : -order.filledSize;
                     newPos.entryPrice = fillPrice;
                     newPos.entryTime = order.executionTime;
-                    newPos.pipPoint = getPipPoint(order.symbol); // Store pip point in position
+                    newPos.pipPoint = getPointValue(order.symbol); // Store point value in position
                     newPos.lastValue = std::abs(newPos.size * newPos.entryPrice); // Store initial value
 
                     positions[order.symbol] = newPos;
 
                     // Margin is held implicitly, cash doesn't change directly by position value here, only by commission.
-                     Utils::logMessage("Broker: Opening position " + order.symbol + ". Size: " + std::to_string(newPos.size)
+                    Utils::logMessage("Broker: Opening position " + order.symbol + ". Size: " + std::to_string(newPos.size)
                                          + ", Entry: " + std::to_string(fillPrice)
                                          + ", Commission: " + std::to_string(commission));
-
                 }
             }
 

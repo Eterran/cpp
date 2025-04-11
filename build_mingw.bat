@@ -5,7 +5,6 @@ setlocal
 set BUILD_DIR=build
 set CMAKE_GENERATOR="MinGW Makefiles"
 set LOG_FILE=build_log.txt
-set SHOW_OUTPUT=yes
 :: Clear log file if it exists
 if exist "%LOG_FILE%" del "%LOG_FILE%"
 echo Build started at %date% %time% > "%LOG_FILE%"
@@ -75,30 +74,22 @@ if defined CMAKE_BUILD_TYPE (
 )
 echo %CMAKE_CMD%
 echo %CMAKE_CMD% >> "%LOG_FILE%"
-
-:: Run CMake and capture output for both console and log file
-%CMAKE_CMD% > temp_cmake_output.txt 2>&1
-type temp_cmake_output.txt
-type temp_cmake_output.txt >> "%LOG_FILE%"
-if exist temp_cmake_output.txt del temp_cmake_output.txt
+%CMAKE_CMD% >> "%LOG_FILE%" 2>&1
 
 if errorlevel 1 (
-    echo ERROR: CMake configuration failed.
+    echo ERROR: CMake configuration failed. See %LOG_FILE% for details.
+    echo ERROR: CMake configuration failed. >> "%LOG_FILE%"
     cd ..
     goto :eof
 )
 
 echo --- Running Make (%MAKE_COMMAND%) ---
 echo --- Running Make (%MAKE_COMMAND%) --- >> "%LOG_FILE%"
-
-:: Run Make and capture output for both console and log file
-%MAKE_COMMAND% > temp_make_output.txt 2>&1
-type temp_make_output.txt
-type temp_make_output.txt >> "%LOG_FILE%"
-if exist temp_make_output.txt del temp_make_output.txt
+%MAKE_COMMAND% >> "%LOG_FILE%" 2>&1
 
 if errorlevel 1 (
-    echo ERROR: Build failed. See errors above.
+    echo ERROR: Build failed. See %LOG_FILE% for details.
+    echo ERROR: Build failed. >> "%LOG_FILE%"
     cd ..
     goto :eof
 )

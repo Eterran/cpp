@@ -39,7 +39,7 @@ struct Order {
     OrderType type = OrderType::BUY;
     OrderStatus status = OrderStatus::CREATED;
     OrderReason reason = OrderReason::ENTRY_SIGNAL; // Default reason
-    std::string symbol = "";          // e.g., "USDJPY"
+    std::string symbol = "";          // e.g., "USDJPY", "BTCUSDT"
     double requestedSize = 0.0;       // Absolute value of units/shares requested
     double filledSize = 0.0;          // Actual size filled (can differ in reality)
     double requestedPrice = 0.0;      // For Limit/Stop orders (0.0 for Market)
