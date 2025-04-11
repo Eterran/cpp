@@ -14,18 +14,49 @@ set(CMAKE_CXX_EXTENSIONS OFF) # Avoid compiler-specific extensions
 # Define the name of your executable
 set(EXECUTABLE_NAME backtest)
 
+# --- Find ONNX Runtime ---
+# You can set this as an environment variable OR uncomment and set it here:
+set(ONNXRUNTIME_ROOT "D:/Program_Files/onnxruntime-osx-universal2-1.21.0") # Example Path
+
+if(NOT DEFINED ENV{ONNXRUNTIME_ROOT} AND NOT DEFINED ONNXRUNTIME_ROOT)
+    message(FATAL_ERROR "ONNXRUNTIME_ROOT environment variable or CMake variable is not set. Please point it to your ONNX Runtime installation.")
+endif()
+
+# Use the ENV variable if defined, otherwise use the CMake variable
+if(DEFINED ENV{ONNXRUNTIME_ROOT})
+    set(ORT_ROOT $ENV{ONNXRUNTIME_ROOT})
+else()
+    set(ORT_ROOT ${ONNXRUNTIME_ROOT})
+endif()
+
+message(STATUS "Using ONNX Runtime from: ${ORT_ROOT}")
+
+find_path(ONNXRUNTIME_INCLUDE_DIR NAMES onnxruntime_cxx_api.h PATHS "${ORT_ROOT}/include")
+find_library(ONNXRUNTIME_LIBRARY NAMES onnxruntime PATHS "${ORT_ROOT}/lib")
+
+if(NOT ONNXRUNTIME_INCLUDE_DIR OR NOT ONNXRUNTIME_LIBRARY)
+    message(FATAL_ERROR "Could not find ONNX Runtime include or library files in ${ORT_ROOT}")
+endif()
+
+message(STATUS "Found ONNX Runtime Include Dir: ${ONNXRUNTIME_INCLUDE_DIR}")
+message(STATUS "Found ONNX Runtime Library: ${ONNXRUNTIME_LIBRARY}")
+
 # --- Find Source Files ---
-# Use globbing to automatically find all .cpp files in the src directory
-# WARNING: If you add/remove source files, you need to re-run CMake
 file(GLOB SOURCE_FILES "src/*.cpp")
 
 # --- Include Directories ---
-# Tell CMake where to find header files (the 'include' directory)
-include_directories(include)
+include_directories(
+    include
+    ${ONNXRUNTIME_INCLUDE_DIR} # Include ONNX Runtime headers
+)
 
 # --- Add Executable Target ---
-# Create the executable from the found source files
 add_executable(${EXECUTABLE_NAME} ${SOURCE_FILES})
+
+# --- Link Libraries ---
+target_link_libraries(${EXECUTABLE_NAME} PRIVATE
+    ${ONNXRUNTIME_LIBRARY}
+)
 
 # --- Compiler Flags (Optional but Recommended) ---
 # Add compiler warnings and optimization levels
