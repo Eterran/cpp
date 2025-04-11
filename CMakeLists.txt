@@ -41,17 +41,21 @@ message(STATUS "Found ONNX Runtime Include Dir: ${ONNXRUNTIME_INCLUDE_DIR}")
 message(STATUS "Found ONNX Runtime Library: ${ONNXRUNTIME_LIBRARY}")
 
 # --- Find Source Files ---
-# Use globbing to automatically find all .cpp files in the src directory
-# WARNING: If you add/remove source files, you need to re-run CMake
 file(GLOB SOURCE_FILES "src/*.cpp")
 
 # --- Include Directories ---
-# Tell CMake where to find header files (the 'include' directory)
-include_directories(include)
+include_directories(
+    include
+    ${ONNXRUNTIME_INCLUDE_DIR} # Include ONNX Runtime headers
+)
 
 # --- Add Executable Target ---
-# Create the executable from the found source files
 add_executable(${EXECUTABLE_NAME} ${SOURCE_FILES})
+
+# --- Link Libraries ---
+target_link_libraries(${EXECUTABLE_NAME} PRIVATE
+    ${ONNXRUNTIME_LIBRARY}
+)
 
 # --- Compiler Flags (Optional but Recommended) ---
 # Add compiler warnings and optimization levels
