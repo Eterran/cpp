@@ -15,9 +15,7 @@ set(CMAKE_CXX_EXTENSIONS OFF) # Avoid compiler-specific extensions
 set(EXECUTABLE_NAME backtest)
 
 # --- Find ONNX Runtime ---
-# !! ADJUST THIS PATH !! Set ONNXRUNTIME_ROOT to where you extracted ONNX Runtime
-# You can set this as an environment variable OR uncomment and set it here:
-# set(ONNXRUNTIME_ROOT "E:/onnxruntime/onnxruntime-win-x64-1.18.0") # Example Path
+set(ONNXRUNTIME_ROOT "E:/lib/onnxruntime-win-x64-1.21.0")
 
 if(NOT DEFINED ENV{ONNXRUNTIME_ROOT} AND NOT DEFINED ONNXRUNTIME_ROOT)
     message(FATAL_ERROR "ONNXRUNTIME_ROOT environment variable or CMake variable is not set. Please point it to your ONNX Runtime installation.")
