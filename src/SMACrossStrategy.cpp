@@ -51,16 +51,14 @@ void SmaCrossStrategy::init() {
         //... etc
     }
 
-
     // Re-initialize indicator with loaded period if different from default constructor
     if (smaIndicator.getMinPeriod() != static_cast<size_t>(smaPeriod)) {
         smaIndicator = SMAIndicator(smaPeriod); // Replace with correctly configured one
     }
 
-
     // --- Set up Strategy State ---
     pipPoint = Utils::calculatePipPoint(dataName); // Calculate pip point for the primary data
-    broker->setPipPoint(dataName, pipPoint); // Inform broker about pip point
+    broker->setPointValue(dataName, pipPoint); // Inform broker about pip point
 
     startingAccountValue = broker->getCash(); // Use initial cash as starting value baseline
     currentPendingOrderId = -1;

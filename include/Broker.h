@@ -22,7 +22,7 @@ private:
     std::map<std::string, Position> positions; // Map symbol to open Position
     std::vector<Order> pendingOrders;
     std::vector<Order> orderHistory;
-    std::map<std::string, double> pipPoints; // Store pip points per symbol
+    std::map<std::string, double> pointValues; // Store point values per symbol
     int nextOrderId;
     Strategy* strategy; // Pointer to the strategy for notifications (non-owning)
 
@@ -35,8 +35,8 @@ private:
     // Helper to calculate commission for an order
     double calculateCommission(double size) const;
 
-    // Helper to find the pip point for a symbol
-    double getPipPoint(const std::string& symbol) const;
+    // Helper to find the point value for a symbol
+    double getPointValue(const std::string& symbol) const;
 
 public:
     // Add a default constructor 
@@ -63,11 +63,11 @@ public:
     const Position* getPosition(const std::string& symbol) const; // Get const pointer
     const std::map<std::string, Position>& getAllPositions() const; // Get reference to all positions
 
-     // --- Configuration ---
-     void setPipPoint(const std::string& symbol, double pips);
+    // --- Configuration ---
+    void setPointValue(const std::string& symbol, double points);
 
-     // --- History ---
-     const std::vector<Order>& getOrderHistory() const;
+    // --- History ---
+    const std::vector<Order>& getOrderHistory() const;
 };
 
 #endif // BROKER_H
