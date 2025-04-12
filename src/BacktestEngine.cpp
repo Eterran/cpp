@@ -150,13 +150,13 @@ void BacktestEngine::run() {
         // 3. Call strategy's next logic
         try {
             // Reduce verbose logging for better performance
-            if (currentBarIndex % 500 == 0) {
-                Utils::logMessage("Calling strategy->next for bar " + std::to_string(currentBarIndex));
-            }
+            // if (currentBarIndex % 500 == 0) {
+            //     Utils::logMessage("Calling strategy->next for bar " + std::to_string(currentBarIndex));
+            // }
             strategy->next(currentBar, currentBarIndex, currentPrices);
-            if (currentBarIndex % 500 == 0) {
-                Utils::logMessage("Completed strategy->next call successfully");
-            }
+            // if (currentBarIndex % 500 == 0) {
+            //     Utils::logMessage("Completed strategy->next call successfully");
+            // }
         } catch (const std::exception& e) {
             Utils::logMessage("BacktestEngine Error: Exception during strategy next(): " + std::string(e.what()));
             std::cerr << "Exception in strategy next(): " << e.what() << std::endl;
@@ -166,10 +166,10 @@ void BacktestEngine::run() {
         }
 
         // Add progress reporting - important for debugging but reduce frequency
-        if (currentBarIndex % 500 == 0 || currentBarIndex == totalBars - 1) {
-            Utils::logMessage("Progress: Bar " + std::to_string(currentBarIndex + 1) + "/" + 
-                              std::to_string(totalBars) + " processed");
-        }
+        // if (currentBarIndex % 500 == 0 || currentBarIndex == totalBars - 1) {
+        //     Utils::logMessage("Progress: Bar " + std::to_string(currentBarIndex + 1) + "/" + 
+        //                       std::to_string(totalBars) + " processed");
+        // }
     } // End of main loop
 
     // --- Post-Loop ---
