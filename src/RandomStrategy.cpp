@@ -92,14 +92,38 @@ void RandomStrategy::next(const Bar& , size_t currentBarIndex, const std::map<st
             double tpPips = config->getNested<double>("/Strategy/TAKE_PROFIT_PIPS", 30.0);
             double slPips = config->getNested<double>("/Strategy/STOP_LOSS_PIPS", 30.0);
 
+            // Log the raw values for debugging
+            Utils::logMessage("DEBUG: TP Pips = " + std::to_string(tpPips) + ", SL Pips = " + std::to_string(slPips));
+            Utils::logMessage("DEBUG: Requested Entry Price = " + std::to_string(entryOrder.requestedPrice));
+
             if (entryOrderType == OrderType::BUY) {
                 // Long position
                 entryOrder.takeProfit = entryOrder.requestedPrice + tpPips;
                 entryOrder.stopLoss = entryOrder.requestedPrice - slPips;
+
+                // Ensure TP is above entry and SL is below entry for long positions
+                if (entryOrder.stopLoss >= entryOrder.requestedPrice) {
+                    Utils::logMessage("WARNING: Correcting invalid SL for long position. SL must be below entry price.");
+                    entryOrder.stopLoss = entryOrder.requestedPrice - std::abs(slPips);
+                }
+                if (entryOrder.takeProfit <= entryOrder.requestedPrice) {
+                    Utils::logMessage("WARNING: Correcting invalid TP for long position. TP must be above entry price.");
+                    entryOrder.takeProfit = entryOrder.requestedPrice + std::abs(tpPips);
+                }
             } else {
                 // Short position
                 entryOrder.takeProfit = entryOrder.requestedPrice - tpPips;
                 entryOrder.stopLoss = entryOrder.requestedPrice + slPips;
+
+                // Ensure TP is below entry and SL is above entry for short positions
+                if (entryOrder.stopLoss <= entryOrder.requestedPrice) {
+                    Utils::logMessage("WARNING: Correcting invalid SL for short position. SL must be above entry price.");
+                    entryOrder.stopLoss = entryOrder.requestedPrice + std::abs(slPips);
+                }
+                if (entryOrder.takeProfit >= entryOrder.requestedPrice) {
+                    Utils::logMessage("WARNING: Correcting invalid TP for short position. TP must be below entry price.");
+                    entryOrder.takeProfit = entryOrder.requestedPrice - std::abs(tpPips);
+                }
             }
 
             // Log the TP/SL values for debugging

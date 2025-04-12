@@ -14,9 +14,8 @@ void waitForKeypress() {
     std::cout << "\nPress Enter key to close..." << std::endl;
 
     std::cin.clear();
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    // std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     
-    // Use getchar() as an alternative to cin.get()
     getchar();
 }
 

@@ -26,12 +26,12 @@ private:
     int nextOrderId;
     Strategy* strategy; // Pointer to the strategy for notifications (non-owning)
     std::mt19937 rng; // Random number generator for slippage
-    std::uniform_real_distribution<double> slippageDist; // Distribution for slippage percentage
+    // std::uniform_real_distribution<double> slippageDist; // Distribution for slippage percentage
 
     // --- Private Helpers ---
-    double getFillPrice(const Bar& bar, OrderType orderType) const;
+    double getFillPrice(const Bar& bar, OrderType orderType, double requestedPrice = 0.0) const;
     double calculateMarginNeeded(double size, double price) const;
-    double calculateCommission(double size) const;
+    double calculateCommission(double size, double price) const;
     double getPointValue(const std::string& symbol) const; // Renamed from getPointValue
 
     // NEW: Handles opening/increasing a position
@@ -42,15 +42,15 @@ private:
 
     // Helper for handling rejected orders
     void rejectOrder(Order& order, OrderStatus rejectionStatus, const Bar& executionBar);
-    
+
     // Check if positions hit take profit or stop loss levels
     void checkTakeProfitStopLoss(const Bar& currentBar, const std::map<std::string, double>& currentPrices);
-    
+
     // Apply random slippage to price
-    double applySlippage(double basePrice, bool isFavorable);
+    // double applySlippage(double basePrice, bool isFavorable);
 
 public:
-    // Add a default constructor 
+    // Add a default constructor
     Broker();
     Broker(double initialCash, double lev, double commRate); // CommRate e.g., 0.00002 per unit
     ~Broker() = default;
@@ -66,9 +66,6 @@ public:
     // --- Order Management ---
     // Creates an order and adds it to pending queue. Returns the order ID.
     int submitOrder(Order order);
-
-    void fillOrder(int orderID);
-    void closeOrder(int orderID);
 
     // Processes pending orders based on the current market data bar.
     // Notifies strategy of outcomes.
