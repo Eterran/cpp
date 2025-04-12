@@ -1,7 +1,6 @@
 // BacktestEngine.cpp
 #include "BacktestEngine.h"
 #include "Utils.h"
-#include "SmaCrossStrategy.h" // Include concrete strategy for now
 #include <stdexcept>
 #include <iostream> // For error messages
 #include <chrono>   // For timing the backtest
@@ -10,9 +9,8 @@
 // Initialize members, especially DataLoader and Broker
 BacktestEngine::BacktestEngine(const Config& cfg) : // Take const ref
     config(cfg), // Copy config
-    // Use getNested with JSON pointer syntax "/"
-    dataLoader(config),
-    currentBarIndex(0)
+    currentBarIndex(0),
+    dataLoader(cfg)
 {
     // Initialize Broker using config values
     try {
@@ -21,19 +19,18 @@ BacktestEngine::BacktestEngine(const Config& cfg) : // Take const ref
         double commRate = config.getNested<double>("/Broker/COMMISSION_RATE", 0.0);
         broker = std::make_unique<Broker>(startCash, leverage, commRate);
     } catch (const std::exception& e) {
-         // Catch potential type errors from getNested as well
+        // Catch potential type errors from getNested as well
         Utils::logMessage("BacktestEngine Error: Failed to parse broker parameters from config: " + std::string(e.what()));
         throw std::runtime_error("Failed to initialize Broker from config.");
     }
 
-    // Extract primary data name (can still do this from path)
+    // Extract primary data name
     std::string path = config.getNested<std::string>("/Data/INPUT_CSV_PATH", "");
     size_t last_slash_idx = path.find_last_of("\\/");
     std::string filename = (std::string::npos == last_slash_idx) ? path : path.substr(last_slash_idx + 1);
-    // Simple parsing assuming "SYMBOL_..." format like python script
+    // Simple parsing assuming "SYMBOL_..." format 
     size_t first_underscore = filename.find('_');
-    primaryDataName = (std::string::npos == first_underscore) ? "UNKNOWN_DATA" : filename.substr(0, first_underscore);
-
+    primaryDataName = (std::string::npos == first_underscore) ? filename : filename.substr(0, first_underscore);
 
     Utils::logMessage("BacktestEngine initialized for data: " + primaryDataName);
 }
@@ -48,14 +45,14 @@ bool BacktestEngine::loadData() {
         if (usePartial) {
             partialPercent = config.getNested<double>("/Data/PARTIAL_DATA_PERCENT", 100.0);
         }
-        // dataLoader was already initialized with the path from config
+
         historicalData = dataLoader.loadData(usePartial, partialPercent);
 
         if (historicalData.empty()) {
-             Utils::logMessage("BacktestEngine Error: No data loaded from file.");
-             return false;
+            Utils::logMessage("BacktestEngine Error: No data loaded from file.");
+            return false;
         }
-         Utils::logMessage("BacktestEngine: Data loaded successfully (" + std::to_string(historicalData.size()) + " bars).");
+        Utils::logMessage("BacktestEngine: Data loaded successfully (" + std::to_string(historicalData.size()) + " bars).");
         return true;
 
     } catch (const std::exception& e) {
@@ -70,7 +67,7 @@ void BacktestEngine::setStrategy(std::unique_ptr<Strategy> strat) {
         Utils::logMessage("BacktestEngine Warning: Attempted to set a null strategy.");
         return;
     }
-     Utils::logMessage("BacktestEngine: Setting strategy...");
+    Utils::logMessage("BacktestEngine: Setting strategy...");
     strategy = std::move(strat); // Take ownership
 }
 
@@ -88,10 +85,10 @@ void BacktestEngine::run() {
         Utils::logMessage("BacktestEngine Error: Cannot run without a strategy set.");
         return;
     }
-     if (!broker) {
-          Utils::logMessage("BacktestEngine Error: Broker not initialized.");
-          return;
-     }
+    if (!broker) {
+        Utils::logMessage("BacktestEngine Error: Broker not initialized.");
+        return;
+    }
 
     // --- Setup Links ---
     Utils::logMessage("BacktestEngine: Linking components...");
@@ -101,64 +98,90 @@ void BacktestEngine::run() {
     broker->setStrategy(strategy.get()); // Pass raw pointer
 
     // --- Initialize Strategy ---
-     Utils::logMessage("BacktestEngine: Initializing strategy...");
-     try {
-         strategy->init();
-     } catch (const std::exception& e) {
-         Utils::logMessage("BacktestEngine Error: Exception during strategy init: " + std::string(e.what()));
-         return; // Stop run if init fails
-     }
-
+    Utils::logMessage("BacktestEngine: Initializing strategy...");
+    try {
+        strategy->init();
+    } catch (const std::exception& e) {
+        Utils::logMessage("BacktestEngine Error: Exception during strategy init: " + std::string(e.what()));
+        return; // Stop run if init fails
+    }
 
     // --- Main Backtest Loop ---
-     Utils::logMessage("BacktestEngine: Starting event loop...");
-     size_t totalBars = historicalData.size();
-     for (currentBarIndex = 0; currentBarIndex < totalBars; ++currentBarIndex) {
+    size_t totalBars = historicalData.size();
+    Utils::logMessage("Beginning backtest with " + std::to_string(totalBars) + " total bars");
+    
+    for (currentBarIndex = 0; currentBarIndex < totalBars; ++currentBarIndex) {
         const Bar& currentBar = historicalData[currentBarIndex];
 
+        // Reduce logging frequency to improve performance
+        // Only log every 500 bars or for important events
+        if (currentBarIndex % 500 == 0) {
+            Utils::logMessage("Processing bar " + std::to_string(currentBarIndex) + "/" + 
+                              std::to_string(totalBars) + " - Date: " + Utils::timePointToString(currentBar.timestamp));
+        }
+
         // 1. Update current prices map (simple version: only primary data)
-        currentPrices[primaryDataName] = currentBar.close;
+        try {
+            currentPrices[primaryDataName] = currentBar.close;
+        } catch (const std::exception& e) {
+            Utils::logMessage("BacktestEngine Error: Exception updating prices: " + std::string(e.what()));
+            continue; // Skip to next bar if we can't update prices
+        }
 
         // 2. Process broker orders based on current bar's data
-        //    (Broker uses bar data for fills, e.g., currentBar.close)
+        bool brokerError = false;
         try {
             broker->processOrders(currentBar);
         } catch (const std::exception& e) {
-             Utils::logMessage("BacktestEngine Error: Exception during broker processing: " + std::string(e.what()));
-             // Decide whether to stop or continue
-             break; // Stop for safety
+            brokerError = true;
+            Utils::logMessage("BacktestEngine Error: Exception during broker processing: " + std::string(e.what()));
+            std::cerr << "Exception in broker processing: " << e.what() << std::endl;
+        } catch (...) {
+            brokerError = true;
+            Utils::logMessage("BacktestEngine Error: Unknown exception during broker processing");
+            std::cerr << "Unknown exception in broker processing" << std::endl;
         }
 
+        // Skip strategy execution if broker processing had errors
+        if (brokerError) {
+            continue;
+        }
 
         // 3. Call strategy's next logic
         try {
-             // Pass current prices map in case strategy needs other data prices (not used by SMA cross)
-            strategy->next(currentBar, currentPrices);
+            // Reduce verbose logging for better performance
+            if (currentBarIndex % 500 == 0) {
+                Utils::logMessage("Calling strategy->next for bar " + std::to_string(currentBarIndex));
+            }
+            strategy->next(currentBar, currentBarIndex, currentPrices);
+            if (currentBarIndex % 500 == 0) {
+                Utils::logMessage("Completed strategy->next call successfully");
+            }
         } catch (const std::exception& e) {
-             Utils::logMessage("BacktestEngine Error: Exception during strategy next(): " + std::string(e.what()));
-              // Decide whether to stop or continue
-             break; // Stop for safety
+            Utils::logMessage("BacktestEngine Error: Exception during strategy next(): " + std::string(e.what()));
+            std::cerr << "Exception in strategy next(): " << e.what() << std::endl;
+        } catch (...) {
+            Utils::logMessage("BacktestEngine Error: Unknown exception during strategy next()");
+            std::cerr << "Unknown exception in strategy next()" << std::endl;
         }
 
-
-        // Optional: Progress reporting
-        // if (currentBarIndex % 10000 == 0) { // Report every N bars
-        //     Utils::logMessage("Progress: Bar " + std::to_string(currentBarIndex) + "/" + std::to_string(totalBars));
-        // }
-
-     } // End of main loop
+        // Add progress reporting - important for debugging but reduce frequency
+        if (currentBarIndex % 500 == 0 || currentBarIndex == totalBars - 1) {
+            Utils::logMessage("Progress: Bar " + std::to_string(currentBarIndex + 1) + "/" + 
+                              std::to_string(totalBars) + " processed");
+        }
+    } // End of main loop
 
     // --- Post-Loop ---
     Utils::logMessage("BacktestEngine: Event loop finished.");
 
     // --- Final Strategy Call ---
-     Utils::logMessage("BacktestEngine: Calling strategy stop()...");
-     try {
-         strategy->stop();
-     } catch (const std::exception& e) {
-          Utils::logMessage("BacktestEngine Error: Exception during strategy stop(): " + std::string(e.what()));
-     }
-
+    Utils::logMessage("BacktestEngine: Calling strategy stop()...");
+    try {
+        strategy->stop();
+    } catch (const std::exception& e) {
+        Utils::logMessage("BacktestEngine Error: Exception during strategy stop(): " + std::string(e.what()));
+    }
 
     auto endTime = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = endTime - startTime;

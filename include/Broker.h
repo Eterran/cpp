@@ -9,6 +9,7 @@
 #include <map>
 #include <string>
 #include <memory> // Maybe for future use, not strictly needed now
+#include <random> // For slippage generation
 
 // Forward declaration of Strategy class to break circular dependency
 class Strategy;
@@ -22,26 +23,37 @@ private:
     std::map<std::string, Position> positions; // Map symbol to open Position
     std::vector<Order> pendingOrders;
     std::vector<Order> orderHistory;
-    std::map<std::string, double> pointValues; // Store point values per symbol
     int nextOrderId;
     Strategy* strategy; // Pointer to the strategy for notifications (non-owning)
+    std::mt19937 rng; // Random number generator for slippage
+    std::uniform_real_distribution<double> slippageDist; // Distribution for slippage percentage
 
-    // Helper to get the relevant price from a bar for filling market orders
+    // --- Private Helpers ---
     double getFillPrice(const Bar& bar, OrderType orderType) const;
-
-    // Helper to calculate margin required for an order
     double calculateMarginNeeded(double size, double price) const;
-
-    // Helper to calculate commission for an order
     double calculateCommission(double size) const;
+    double getPointValue(const std::string& symbol) const; // Renamed from getPointValue
 
-    // Helper to find the point value for a symbol
-    double getPointValue(const std::string& symbol) const;
+    // NEW: Handles opening/increasing a position
+    void executeOpenOrder(Order& order, const Bar& executionBar);
+
+    // NEW: Handles closing/reducing/reversing a position
+    void executeCloseOrder(Order& order, Position& existingPosition, const Bar& executionBar);
+
+    // Helper for handling rejected orders
+    void rejectOrder(Order& order, OrderStatus rejectionStatus, const Bar& executionBar);
+    
+    // Check if positions hit take profit or stop loss levels
+    void checkTakeProfitStopLoss(const Bar& currentBar, const std::map<std::string, double>& currentPrices);
+    
+    // Apply random slippage to price
+    double applySlippage(double basePrice, bool isFavorable);
 
 public:
     // Add a default constructor 
     Broker();
     Broker(double initialCash, double lev, double commRate); // CommRate e.g., 0.00002 per unit
+    ~Broker() = default;
 
     // Set the strategy instance (called by engine)
     void setStrategy(Strategy* strat);
@@ -53,7 +65,10 @@ public:
 
     // --- Order Management ---
     // Creates an order and adds it to pending queue. Returns the order ID.
-    int submitOrder(OrderType type, OrderReason reason, const std::string& symbol, double size);
+    int submitOrder(Order order);
+
+    void fillOrder(int orderID);
+    void closeOrder(int orderID);
 
     // Processes pending orders based on the current market data bar.
     // Notifies strategy of outcomes.
@@ -64,7 +79,6 @@ public:
     const std::map<std::string, Position>& getAllPositions() const; // Get reference to all positions
 
     // --- Configuration ---
-    void setPointValue(const std::string& symbol, double points);
 
     // --- History ---
     const std::vector<Order>& getOrderHistory() const;

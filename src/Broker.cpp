@@ -1,25 +1,31 @@
 // Broker.cpp
 #include "Broker.h"
-#include "Strategy.h" // Include Strategy definition now
+#include "Strategy.h"
 #include "Utils.h"    // For logging and pip point calculation
 #include <cmath>      // For std::abs, std::round etc.
 #include <stdexcept>  // For potential errors (though mostly handled via logging/rejection)
 #include <numeric>    // For std::accumulate
+#include <chrono>     // For random seed
+#include <sstream>    // For random number generation (slippage)
 
 // --- Constructor ---
 Broker::Broker(double initialCash, double lev, double commRate) :
     startingCash(initialCash),
     cash(initialCash),
-    leverage(lev > 0 ? lev : 1.0), // Ensure leverage is at least 1
+    leverage(lev > 0 ? lev : 1.0),
     commissionRate(commRate),
-    nextOrderId(1), // Start order IDs from 1
-    strategy(nullptr) // Initialize strategy pointer to null
+    nextOrderId(1),
+    strategy(nullptr),
+    rng(static_cast<unsigned int>(
+        std::chrono::system_clock::now().time_since_epoch().count())
+    ),
+    slippageDist(-0.001, 0.001) // ±0.2% slippage
 {
     if (initialCash <= 0) {
-        Utils::logMessage("Broker Warning: Initial cash is zero or negative.");
-        // Consider throwing an error if this is invalid state
+        Utils::logMessage("Broker Warning: Initial cash is zero or negative."); // PROBABLY throw error
+        initialCash = 1.0;
     }
-     Utils::logMessage("Broker initialized. Start Cash: " + std::to_string(initialCash)
+    Utils::logMessage("Broker initialized. Start Cash: " + std::to_string(initialCash)
                         + ", Leverage: " + std::to_string(leverage)
                         + ", Commission/Unit: " + std::to_string(commissionRate));
 }
@@ -31,7 +37,11 @@ Broker::Broker() :
     leverage(1.0),
     commissionRate(0.0),
     nextOrderId(1),
-    strategy(nullptr)
+    strategy(nullptr),
+    rng(static_cast<unsigned int>(
+        std::chrono::system_clock::now().time_since_epoch().count())
+    ),
+    slippageDist(-0.002, 0.002) // ±0.2% slippage
 {
     Utils::logMessage("Broker initialized with default values. Start Cash: 10000, Leverage: 1.0, Commission: 0.0");
 }
@@ -41,14 +51,8 @@ void Broker::setStrategy(Strategy* strat) {
     strategy = strat;
 }
 
-void Broker::setPointValue(const std::string& symbol, double points) {
-    pointValues[symbol] = points;
-    Utils::logMessage("Broker: Set point value for " + symbol + " to " + std::to_string(points));
-}
-
 // --- Helpers ---
 double Broker::getFillPrice(const Bar& bar, OrderType orderType) const {
-    // More realistic fill logic attempt:
     if (orderType == OrderType::BUY) {
         // Buyer gets the ASK price (higher)
         return (bar.ask > 0) ? bar.ask : bar.close; // Use ask if available, else close
@@ -56,7 +60,6 @@ double Broker::getFillPrice(const Bar& bar, OrderType orderType) const {
         // Seller gets the BID price (lower)
         return (bar.bid > 0) ? bar.bid : bar.close; // Use bid if available, else close
     }
-    // Original simple logic: return bar.close;
 }
 
 double Broker::calculateMarginNeeded(double size, double price) const {
@@ -65,20 +68,13 @@ double Broker::calculateMarginNeeded(double size, double price) const {
 }
 
 double Broker::calculateCommission(double size) const {
-    // Commission based on rate per unit traded
     return std::abs(size) * commissionRate;
 }
 
-double Broker::getPointValue(const std::string& symbol) const { // Keep it const
-    auto it = pointValues.find(symbol);
-    if (it != pointValues.end()) {
-        return it->second; // Return stored value
-    }
-    // Point value not found in map, calculate default but DO NOT store it here
-    Utils::logMessage("Broker Warning: Point value not explicitly set for symbol '" + symbol + "'. Using default calculation.");
-    return Utils::calculatePipPoint(symbol); // Return calculated default (function name needs updating in Utils)
+double Broker::getPointValue(const std::string&) const {
+    // TODO: actually calculate point value based on symbol
+    return 1.0;
 }
-
 
 // --- Account Info ---
 double Broker::getStartingCash() const {
@@ -89,6 +85,7 @@ double Broker::getCash() const {
     return cash;
 }
 
+// calculate acc value including floating PnL
 double Broker::getValue(const std::map<std::string, double>& currentPrices) {
     double totalValue = cash;
     double positionsValue = 0.0;
@@ -99,7 +96,17 @@ double Broker::getValue(const std::map<std::string, double>& currentPrices) {
 
         auto priceIt = currentPrices.find(symbol);
         if (priceIt != currentPrices.end()) {
+            // For short positions (negative size), PnL should be negative when current price > entry price
             positionsValue += pos.calculateUnrealizedPnL(priceIt->second);
+
+            // Debug logging for significant positions to help troubleshoot
+            if (std::abs(pos.size) > 0.01) {
+                Utils::logMessage("Position PnL calculation: Symbol=" + symbol +
+                                 ", Size=" + std::to_string(pos.size) +
+                                 ", Entry=" + std::to_string(pos.entryPrice) +
+                                 ", Current=" + std::to_string(priceIt->second) +
+                                 ", PnL=" + std::to_string(pos.calculateUnrealizedPnL(priceIt->second)));
+            }
         } else {
             // If price for an open position isn't available, we can't calculate its current value.
             // Option 1: Log warning and exclude it (underestimates value).
@@ -119,10 +126,8 @@ double Broker::getValue(const std::map<std::string, double>& currentPrices) {
              // positionsValue += pos.size * priceIt->second; // This calculates the current nominal value of the position asset
         }
     }
-     // Correct approach: Account Value = Cash + Unrealized PnL
-     totalValue += positionsValue;
-
-
+    // Correct approach: Account Value = Cash + Unrealized PnL
+    totalValue += positionsValue;
     return totalValue;
 
     /* --- Alternative getValue Calculation (Liquidation Value) ---
@@ -141,199 +146,417 @@ double Broker::getValue(const std::map<std::string, double>& currentPrices) {
     */
 }
 
-
-// --- Order Management ---
-int Broker::submitOrder(OrderType type, OrderReason reason, const std::string& symbol, double size) {
-    if (size <= 0) {
-        Utils::logMessage("Broker Error: Order size must be positive. Requested: " + std::to_string(size));
-        // Cannot create a valid order object to return status easily here.
-        // Returning -1 to indicate immediate failure.
-        return -1;
+// --- Helper: Reject Order ---
+void Broker::rejectOrder(Order& order, OrderStatus rejectionStatus, const Bar& executionBar) {
+    order.status = rejectionStatus;
+    order.executionTime = executionBar.timestamp;
+    orderHistory.push_back(order); // Move to history
+    if (strategy) {
+        strategy->notifyOrder(order);
     }
-    if (strategy == nullptr) {
-         Utils::logMessage("Broker Error: Strategy not set. Cannot submit order.");
-         return -1;
-    }
-
-    Order order;
-    order.id = nextOrderId++;
-    order.type = type;
-    order.status = OrderStatus::SUBMITTED; // Mark as submitted to broker simulation
-    order.reason = reason;
-    order.symbol = symbol;
-    order.requestedSize = size; // Store positive size always
-    order.creationTime = std::chrono::system_clock::now(); // Use current time for creation
-
-    pendingOrders.push_back(order);
-    // Utils::logMessage("Broker: Order " + std::to_string(order.id) + " submitted: " + (type == OrderType::BUY ? "BUY" : "SELL") + " " + std::to_string(size) + " " + symbol);
-
-    // Notify strategy immediately that order was submitted? Optional. Backtrader doesn't always.
-    // strategy->notifyOrder(order);
-
-    return order.id;
+    Utils::logMessage("Broker: Order " + std::to_string(order.id) + " REJECTED (" + std::to_string(static_cast<int>(rejectionStatus)) + ")"); // Log rejection reason
 }
 
-void Broker::processOrders(const Bar& currentBar) {
-    if (strategy == nullptr) return; // Cannot process without strategy for notifications
+// --- Helper: Execute Open Order ---
+// Handles opening a new position or increasing an existing one
+void Broker::executeOpenOrder(Order& order, const Bar& executionBar) {
+    double fillPrice = getFillPrice(executionBar, order.type);
+    if (fillPrice <= 0) {
+        Utils::logMessage("Broker Warning: Invalid fill price for open order " + std::to_string(order.id));
+        rejectOrder(order, OrderStatus::REJECTED, executionBar);
+        return;
+    }
 
-    auto it = pendingOrders.begin();
-    while (it != pendingOrders.end()) {
-        Order& order = *it; // Work with the order directly
+    double marginNeeded = calculateMarginNeeded(order.requestedSize, fillPrice);
+    double commission = calculateCommission(order.requestedSize);
 
-        // Assume Market Order Fill Logic for now
-        double fillPrice = getFillPrice(currentBar, order.type);
-        if (fillPrice <= 0) {
-            Utils::logMessage("Broker Warning: Invalid fill price (" + std::to_string(fillPrice) + ") for Bar Time: " + Utils::formatTimestamp(currentBar.timestamp) + ". Cannot process order " + std::to_string(order.id)); 
-            // Decide: Reject order or wait for next bar? Reject for now.
-            order.status = OrderStatus::REJECTED;
-            order.executionTime = currentBar.timestamp; // Use bar's time
-            orderHistory.push_back(order);
-            strategy->notifyOrder(order);
-            it = pendingOrders.erase(it); // Remove from pending
-            continue;
-        }
+    // --- Perform Checks ---
+    bool checksPassed = true;
+    OrderStatus rejectionStatus = OrderStatus::REJECTED;
+    if (marginNeeded > cash) {
+        Utils::logMessage("Broker: Open Order " + std::to_string(order.id) + " REJECTED (Margin). Needed: " + std::to_string(marginNeeded) + ", Cash: " + std::to_string(cash));
+        rejectionStatus = OrderStatus::MARGIN;
+        checksPassed = false;
+    } else if (commission > cash - marginNeeded) {
+        Utils::logMessage("Broker: Open Order " + std::to_string(order.id) + " REJECTED (Cash for Commission). Comm: " + std::to_string(commission) + ", Cash after Margin: " + std::to_string(cash - marginNeeded));
+        rejectionStatus = OrderStatus::REJECTED;
+        checksPassed = false;
+    }
 
+    if (!checksPassed) {
+        rejectOrder(order, rejectionStatus, executionBar);
+        return;
+    }
 
-        double orderValue = order.requestedSize * fillPrice;
-        double marginNeeded = calculateMarginNeeded(order.requestedSize, fillPrice);
-        double commission = calculateCommission(order.requestedSize);
+    // --- Checks Passed - Apply Execution ---
+    order.status = OrderStatus::FILLED;
+    order.filledPrice = fillPrice;
+    order.filledSize = order.requestedSize; // Assume full fill for open orders
+    order.commission = commission;
+    order.executionTime = executionBar.timestamp;
 
-        // --- Check if closing an existing position ---
-        bool isClosingOrder = false;
-        Position* existingPosition = nullptr;
-        auto posIt = positions.find(order.symbol);
-        if (posIt != positions.end()) {
-            existingPosition = &(posIt->second);
-            // Check if order type is opposite to position direction
-            if ((order.type == OrderType::SELL && existingPosition->size > 0) ||
-                (order.type == OrderType::BUY && existingPosition->size < 0))
-            {
-                // Check if size matches or exceeds existing position size (allow partial close later?)
-                if (order.requestedSize >= std::abs(existingPosition->size)) {
-                    isClosingOrder = true;
-                    // Adjust order size to exactly match position size if it exceeds it
-                    // This prevents accidentally opening an opposite position immediately
-                    // Note: In reality, overfills might happen or partial fills. Simple model assumes exact fill up to requested size.
-                    order.requestedSize = std::abs(existingPosition->size);
-                    orderValue = order.requestedSize * fillPrice; // Recalculate value based on adjusted size
-                    commission = calculateCommission(order.requestedSize); // Recalculate commission
-                    // Margin check might not be needed for *closing* trades in some brokers, but check anyway for consistency
-                    marginNeeded = 0; // Typically no additional margin for closing
-                } else {
-                    // TODO: Handle partial closes if needed. For now, assume full close orders.
-                    Utils::logMessage("Broker Info: Order " + std::to_string(order.id) + " is a partial close. Not implemented, treating as new position attempt.");
-                }
+    cash -= order.commission; // Deduct commission
+
+    // Find if position exists to increase it
+    Position* existingPosition = nullptr;
+    auto posIt = positions.find(order.symbol);
+    if (posIt != positions.end()) {
+        existingPosition = &(posIt->second);
+    }
+
+    if (existingPosition) { // Increase existing position
+        Utils::logMessage("Broker: Increasing position " + order.symbol + ". Added Size: " + std::to_string(order.filledSize));
+        double currentSize = existingPosition->size;
+        double currentEntry = existingPosition->entryPrice;
+        double newSize = currentSize + order.filledSize;
+        // Calculate new average entry price
+        existingPosition->entryPrice = ((currentSize * currentEntry) + (order.filledSize * fillPrice)) / newSize;
+        existingPosition->size = newSize;
+        existingPosition->lastValue = std::abs(newSize * existingPosition->entryPrice);
+        // SL/TP might need recalculation/management by strategy after notification
+         Utils::logMessage("Broker: New position size " + std::to_string(newSize) + ", Avg Entry: " + std::to_string(existingPosition->entryPrice));
+
+    } else { // Create new position
+        Position newPos;
+        newPos.symbol = order.symbol;
+        newPos.size = order.filledSize;
+        newPos.entryPrice = fillPrice;
+        newPos.entryTime = order.executionTime;
+        newPos.pointValue = getPointValue(order.symbol);
+        newPos.lastValue = std::abs(newPos.size * newPos.entryPrice);
+        // Set SL/TP based *on the order* if provided, otherwise strategy manages
+        newPos.stopLoss = order.stopLoss;
+        newPos.takeProfit = order.takeProfit;
+        positions[order.symbol] = newPos;
+
+        std::string direction = (newPos.size > 0) ? "LONG" : "SHORT";
+        Utils::logMessage("Broker: Opening " + direction + " position " + order.symbol +
+                         ". Size: " + std::to_string(std::abs(newPos.size)) +
+                         ", Entry: " + std::to_string(fillPrice) +
+                         ", SL: " + std::to_string(order.stopLoss) +
+                         ", TP: " + std::to_string(order.takeProfit) +
+                         ", Commission: " + std::to_string(order.commission));
+    }
+
+    // --- Finalize ---
+    orderHistory.push_back(order);
+    if (strategy) {
+        strategy->notifyOrder(order);
+    }
+}
+
+// --- Helper: Execute Close Order ---
+// Handles closing, reducing, or reversing a position
+void Broker::executeCloseOrder(Order& order, Position& existingPosition, const Bar& executionBar) {
+     double fillPrice = getFillPrice(executionBar, order.type);
+    if (fillPrice <= 0) {
+        Utils::logMessage("Broker Warning: Invalid fill price for close order " + std::to_string(order.id));
+        rejectOrder(order, OrderStatus::REJECTED, executionBar);
+        return;
+    }
+
+    // Determine actual size to close (cannot close more than exists)
+    double sizeToClose = std::min(order.requestedSize, std::abs(existingPosition.size));
+    if (sizeToClose < 1e-9) { // Avoid closing zero or tiny amounts
+         Utils::logMessage("Broker Info: Close order " + std::to_string(order.id) + " has negligible size (" + std::to_string(sizeToClose) + "). Rejecting.");
+         rejectOrder(order, OrderStatus::REJECTED, executionBar);
+         return;
+    }
+
+    double commission = calculateCommission(sizeToClose);
+
+    // --- Perform Checks ---
+    bool checksPassed = true;
+    OrderStatus rejectionStatus = OrderStatus::REJECTED;
+    if (commission > cash) { // Simple check for closing orders
+        Utils::logMessage("Broker: Close Order " + std::to_string(order.id) + " REJECTED (Cash for Commission). Comm: " + std::to_string(commission) + ", Cash: " + std::to_string(cash));
+        checksPassed = false;
+    }
+
+    if (!checksPassed) {
+        rejectOrder(order, rejectionStatus, executionBar);
+        return;
+    }
+
+    // --- Checks Passed - Apply Execution ---
+    order.status = OrderStatus::FILLED;
+    order.filledPrice = fillPrice;
+    order.filledSize = sizeToClose; // Fill the actual size being closed
+    order.commission = commission;
+    order.executionTime = executionBar.timestamp;
+
+    cash -= order.commission; // Deduct commission
+
+    // --- Calculate PnL on the closed portion ---
+    // Sign of closed portion is opposite of existingPosition.size
+    double closedSizeSigned = (existingPosition.size > 0) ? -sizeToClose : sizeToClose;
+
+    // Calculate PnL differently for long vs short positions
+    double pnl = 0.0;
+    if (existingPosition.size > 0) { // Long position
+        // For long: (exit price - entry price) * size
+        pnl = (fillPrice - existingPosition.entryPrice) * closedSizeSigned;
+    } else { // Short position
+        // For short: (entry price - exit price) * size
+        pnl = (existingPosition.entryPrice - fillPrice) * closedSizeSigned;
+    }
+
+    cash += pnl; // Add realized P/L to cash
+
+    // --- Update Position ---
+    double newPositionSize = existingPosition.size + closedSizeSigned; // Add signed closed amount
+
+    if (std::abs(newPositionSize) < 1e-9) { // Position fully closed
+        // Create a more detailed log message with clear PnL calculation
+        std::string direction = (existingPosition.size > 0) ? "LONG" : "SHORT";
+        std::string pnlCalcStr = (existingPosition.size > 0) ?
+            "(Exit " + std::to_string(fillPrice) + " - Entry " + std::to_string(existingPosition.entryPrice) + ") * Size " + std::to_string(closedSizeSigned) :
+            "(Entry " + std::to_string(existingPosition.entryPrice) + " - Exit " + std::to_string(fillPrice) + ") * Size " + std::to_string(closedSizeSigned);
+
+        Utils::logMessage("Broker: Closing " + direction + " position " + order.symbol + ". Closed Size: " + std::to_string(std::abs(closedSizeSigned))
+                            + ", Entry: " + std::to_string(existingPosition.entryPrice)
+                            + ", Exit: " + std::to_string(fillPrice)
+                            + ", PnL: " + std::to_string(pnl) + " [" + pnlCalcStr + "]"
+                            + ", Commission: " + std::to_string(order.commission));
+        positions.erase(order.symbol); // Remove from map
+    } else { // Position reduced (partial close)
+        std::string direction = (existingPosition.size > 0) ? "LONG" : "SHORT";
+        std::string pnlCalcStr = (existingPosition.size > 0) ?
+            "(Exit " + std::to_string(fillPrice) + " - Entry " + std::to_string(existingPosition.entryPrice) + ") * Size " + std::to_string(closedSizeSigned) :
+            "(Entry " + std::to_string(existingPosition.entryPrice) + " - Exit " + std::to_string(fillPrice) + ") * Size " + std::to_string(closedSizeSigned);
+
+        Utils::logMessage("Broker: Reducing " + direction + " position " + order.symbol + ". Closed Size: " + std::to_string(std::abs(closedSizeSigned))
+                            + ", Entry: " + std::to_string(existingPosition.entryPrice)
+                            + ", Exit: " + std::to_string(fillPrice)
+                            + ", PnL: " + std::to_string(pnl) + " [" + pnlCalcStr + "]");
+        existingPosition.size = newPositionSize; // Update remaining size
+        // Entry price, SL/TP remain the same for the remaining portion
+        Utils::logMessage("Broker: Remaining position " + order.symbol + ". Size: " + std::to_string(newPositionSize));
+    }
+
+    // --- Finalize ---
+    orderHistory.push_back(order);
+    if (strategy) {
+        strategy->notifyOrder(order);
+    }
+}
+
+// Apply random slippage to price
+double Broker::applySlippage(double basePrice, bool isFavorable) {
+    // Generate random slippage factor
+    double slippageFactor = slippageDist(rng);
+
+    // If not favorable, ensure slippage is only negative (worse for trader)
+    if (!isFavorable && slippageFactor > 0) {
+        slippageFactor = -slippageFactor;
+    }
+
+    // Apply slippage to base price
+    return basePrice * (1.0 + slippageFactor);
+}
+
+// Check if positions hit take profit or stop loss levels
+void Broker::checkTakeProfitStopLoss(const Bar& currentBar, const std::map<std::string, double>& currentPrices) {
+    try {
+        // Iterate through all open positions
+        for (auto posIt = positions.begin(); posIt != positions.end(); /* no increment */) {
+            const std::string& symbol = posIt->first;
+            Position& position = posIt->second;
+
+            // Skip positions with no TP/SL set
+            if (position.takeProfit <= 0.0 && position.stopLoss <= 0.0) {
+                ++posIt;
+                continue;
+            }
+
+            // Get current price
+            auto priceIt = currentPrices.find(symbol);
+            if (priceIt == currentPrices.end()) {
+                Utils::logMessage("Broker::checkTakeProfitStopLoss Warning: No price found for symbol '" + symbol + "'");
+                ++posIt;
+                continue;
+            }
+
+            double currentPrice = priceIt->second;
+            bool tpHit = false, slHit = false;
+            OrderReason closeReason = OrderReason::EXIT_SIGNAL; // Default
+
+        // Check if TP/SL hit
+        if (position.size > 0) { // Long position
+            if (position.takeProfit > 0 && currentPrice >= position.takeProfit) {
+                tpHit = true;
+                closeReason = OrderReason::TAKE_PROFIT;
+            } else if (position.stopLoss > 0 && position.stopLoss < position.entryPrice && currentPrice <= position.stopLoss) {
+                slHit = true;
+                closeReason = OrderReason::STOP_LOSS;
+            } else if (position.stopLoss > 0 && position.stopLoss >= position.entryPrice) {
+                // Log warning for incorrectly set stop loss
+                Utils::logMessage("Broker Warning: Stop loss (" + std::to_string(position.stopLoss) +
+                                 ") for long position in " + symbol +
+                                 " is above entry price (" + std::to_string(position.entryPrice) +
+                                 "). Stop loss should be below entry price for long positions.");
+                // Invalidate the stop loss
+                position.stopLoss = 0.0;
+            }
+        } else if (position.size < 0) { // Short position
+            if (position.takeProfit > 0 && currentPrice <= position.takeProfit) {
+                tpHit = true;
+                closeReason = OrderReason::TAKE_PROFIT;
+            } else if (position.stopLoss > 0 && position.stopLoss > position.entryPrice && currentPrice >= position.stopLoss) {
+                slHit = true;
+                closeReason = OrderReason::STOP_LOSS;
+            } else if (position.stopLoss > 0 && position.stopLoss <= position.entryPrice) {
+                // Log warning for incorrectly set stop loss
+                Utils::logMessage("Broker Warning: Stop loss (" + std::to_string(position.stopLoss) +
+                                 ") for short position in " + symbol +
+                                 " is below entry price (" + std::to_string(position.entryPrice) +
+                                 "). Stop loss should be above entry price for short positions.");
+                // Invalidate the stop loss
+                position.stopLoss = 0.0;
             }
         }
 
+        // If TP/SL hit, create and execute close order
+        if (tpHit || slHit) {
+            OrderType closeType = (position.size > 0) ? OrderType::SELL : OrderType::BUY;
 
-        // --- Perform Checks (Margin & Cash) ---
-        bool checksPassed = true;
-        if (!isClosingOrder) { // Only check margin/cash for opening new positions
-            if (marginNeeded > cash) { // Check margin FIRST
-                Utils::logMessage("Broker: Order " + std::to_string(order.id) + " REJECTED (Margin). Needed: " + std::to_string(marginNeeded) + ", Available Cash: " + std::to_string(cash));
-                order.status = OrderStatus::MARGIN;
-                checksPassed = false;
-            } else if (commission > cash - marginNeeded) { // Check if cash covers commission AFTER reserving margin
-                Utils::logMessage("Broker: Order " + std::to_string(order.id) + " REJECTED (Cash for Commission). Commission: " + std::to_string(commission) + ", Cash after Margin: " + std::to_string(cash - marginNeeded));
-                order.status = OrderStatus::REJECTED; // Generic rejection if not margin specific
-                checksPassed = false;
-            }
-            // Note: A more realistic check would be marginNeeded + commission <= cash,
-            // or even stricter depending on broker rules. Let's use the stricter check.
-            /*
-            if (marginNeeded + commission > cash) {
-                Utils::logMessage("Broker: Order " + std::to_string(order.id) + " REJECTED (Margin + Commission). Needed: " + std::to_string(marginNeeded + commission) + ", Cash: " + std::to_string(cash));
-                order.status = OrderStatus::MARGIN; // Or REJECTED
-                checksPassed = false;
-            }
-            */
+            // Create a market order to close the position
+            Order closeOrder;
+            closeOrder.id = nextOrderId++;
+            closeOrder.type = closeType;
+            closeOrder.symbol = symbol;
+            closeOrder.requestedSize = std::abs(position.size);
+            closeOrder.status = OrderStatus::SUBMITTED;
+            closeOrder.reason = closeReason;
+            closeOrder.creationTime = std::chrono::system_clock::now();
 
+            // Apply slippage to the price (favorable for TP, unfavorable for SL)
+            double targetPrice = tpHit ? position.takeProfit : position.stopLoss;
+            double slippagePrice = applySlippage(targetPrice, tpHit);
+            closeOrder.requestedPrice = slippagePrice;
+
+            std::ostringstream oss;
+            oss << "Broker: Auto-executing "
+                << (tpHit ? "TAKE PROFIT" : "STOP LOSS")
+                << " order for " << symbol
+                << " at price " << slippagePrice
+                << " (original target: " << targetPrice << ")";
+            Utils::logMessage(oss.str());
+
+            // Execute the order
+            executeCloseOrder(closeOrder, position, currentBar);
+            // Note: executeCloseOrder already adds the order to orderHistory and notifies the strategy
+            // So we don't need to do it again here
+
+            // If position was fully closed, the iterator is invalid
+            // Note: executeCloseOrder already removes the position from the map if it's fully closed
+            // So we don't need to check position.size here, just break out of the loop
+            // since we've modified the positions map and the iterator might be invalid
+            break; // Exit the loop after closing a position
         } else {
-            // Closing order: check if cash covers commission
-            if (commission > cash) {
-                Utils::logMessage("Broker: Order " + std::to_string(order.id) + " REJECTED (Cash for Commission on Closing). Needed: " + std::to_string(commission) + ", Cash: " + std::to_string(cash));
-                order.status = OrderStatus::REJECTED;
-                checksPassed = false;
-            }
+            ++posIt;
         }
+    }
+    } catch (const std::exception& e) {
+        Utils::logMessage("Broker::checkTakeProfitStopLoss Error: Exception caught: " + std::string(e.what()));
+    } catch (...) {
+        Utils::logMessage("Broker::checkTakeProfitStopLoss Error: Unknown exception caught");
+    }
+}
 
+// --- Order Management ---
+// returns order ID
+int Broker::submitOrder(Order order) { // Pass Order struct by value (makes a copy)
+    if (strategy == nullptr) {
+        Utils::logMessage("Broker Error: Strategy not set. Cannot submit order.");
+        return -1;
+    }
 
-        // --- Process Order Fill/Rejection ---
-        if (checksPassed) {
-            // Fill the order
-            order.status = OrderStatus::FILLED;
-            order.filledPrice = fillPrice;
-            order.filledSize = order.requestedSize; // Assume full fill for simplicity
-            order.commission = commission;
-            order.executionTime = currentBar.timestamp; // Use bar's timestamp for execution time
+    // Assign unique ID and timestamp before adding
+    order.id = nextOrderId++;
+    order.status = OrderStatus::SUBMITTED; // Mark as ready for processing
+    order.creationTime = std::chrono::system_clock::now();
 
-            // Update cash
-            cash -= commission; // Deduct commission always
+    pendingOrders.push_back(order); // Add the modified copy to pending queue
+    Utils::logMessage("Broker: Order " + std::to_string(order.id) + " submitted. Type: " + (order.type == OrderType::BUY ? "BUY" : "SELL") + ", Size: " + std::to_string(order.requestedSize) + ", Symbol: " + order.symbol);
 
-            double pnl = 0.0; // Profit/Loss realized on this trade if closing
+    return order.id; // Return the assigned ID
+}
 
-            if (isClosingOrder && existingPosition) {
-                // Realize PnL
-                pnl = (fillPrice - existingPosition->entryPrice) * existingPosition->size;
-                cash += pnl; // Add realized P/L to cash
+// --- Process Orders Loop (Refactored) ---
+void Broker::processOrders(const Bar& currentBar) {
+    if (strategy == nullptr) return;
 
-                // Add back margin released (simplified: add back margin used at entry)
-                // double marginAtEntry = calculateMarginNeeded(existingPosition->size, existingPosition->entryPrice);
-                // cash += marginAtEntry; // This part is tricky and depends on exact margin model. Omit for simplicity now.
+    try {
+        // First check if any positions hit take profit or stop loss
+        std::map<std::string, double> currentPrices;
+        // Create a map with close prices for all symbols with open positions
+        for (const auto& pair : positions) {
+            currentPrices[pair.first] = currentBar.close;
+        }
+        checkTakeProfitStopLoss(currentBar, currentPrices);
 
-                Utils::logMessage("Broker: Closing position " + order.symbol + ". Size: " + std::to_string(existingPosition->size)
-                                     + ", Entry: " + std::to_string(existingPosition->entryPrice)
-                                     + ", Exit: " + std::to_string(fillPrice)
-                                     + ", PnL: " + std::to_string(pnl)
-                                     + ", Commission: " + std::to_string(commission));
+        // Process pending orders using indices for safe removal
+        for (size_t i = 0; i < pendingOrders.size(); /* no increment */) {
+            try {
+                Order& order = pendingOrders[i]; // Get reference
 
-                // Remove position
-                positions.erase(order.symbol);
+                // --- Order Type Handling (Market Orders Only for now) ---
+                // TODO: Add check for Limit/Stop orders - if order.requestedPrice > 0 etc.
 
-            } else { // Opening new position or increasing existing one (not handled yet)
-                if (existingPosition) {
-                    // Increasing position size - TODO if needed
-                    Utils::logMessage("Broker Warning: Increasing position size not fully implemented.");
-                    // Simple addition for now:
-                    // cash -= (order.type == OrderType::BUY ? orderValue : -orderValue); // Adjust cash by value only if NOT using margin for this part? Confusing.
-                    // Recalculate average entry price?
-                    // existingPosition->entryPrice = ((existingPosition->size * existingPosition->entryPrice) + (order.filledSize * order.filledPrice)) / (existingPosition->size + order.filledSize);
-                    // existingPosition->size += order.filledSize; // Adjust size
-                } else {
-                    // Create new position
-                    Position newPos;
-                    newPos.symbol = order.symbol;
-                    // Size is positive for BUY, negative for SELL
-                    newPos.size = (order.type == OrderType::BUY) ? order.filledSize : -order.filledSize;
-                    newPos.entryPrice = fillPrice;
-                    newPos.entryTime = order.executionTime;
-                    newPos.pipPoint = getPointValue(order.symbol); // Store point value in position
-                    newPos.lastValue = std::abs(newPos.size * newPos.entryPrice); // Store initial value
-
-                    positions[order.symbol] = newPos;
-
-                    // Margin is held implicitly, cash doesn't change directly by position value here, only by commission.
-                    Utils::logMessage("Broker: Opening position " + order.symbol + ". Size: " + std::to_string(newPos.size)
-                                         + ", Entry: " + std::to_string(fillPrice)
-                                         + ", Commission: " + std::to_string(commission));
+                // --- Check if Opening or Closing ---
+                Position* existingPosition = nullptr;
+                auto posIt = positions.find(order.symbol);
+                bool positionExists = (posIt != positions.end());
+                if (positionExists) {
+                    existingPosition = &(posIt->second);
                 }
+
+                bool isClosingOrder = false;
+                if (positionExists &&
+                    ((order.type == OrderType::SELL && existingPosition->size > 0) || // Selling with Long position
+                     (order.type == OrderType::BUY && existingPosition->size < 0)))   // Buying with Short position
+                {
+                    isClosingOrder = true;
+                }
+                // Note: An order in the same direction as an existing position is treated as 'Open' (increasing size)
+
+                // --- Delegate to Appropriate Handler ---
+                if (isClosingOrder) {
+                    if (existingPosition) { // Should always be true if isClosingOrder is true
+                        executeCloseOrder(order, *existingPosition, currentBar);
+                    } else {
+                        // Should not happen based on logic, but handle defensively
+                        Utils::logMessage("Broker Error: Inconsistent state - Closing order without existing position? ID: " + std::to_string(order.id));
+                        rejectOrder(order, OrderStatus::REJECTED, currentBar);
+                    }
+                } else { // Order is to Open or Increase position
+                    executeOpenOrder(order, currentBar);
+                }
+
+                // --- Remove Processed Order from Pending ---
+                // Both executeOpenOrder and executeCloseOrder handle the final state transition
+                // (FILLED or REJECTED) and notification. We just need to remove it here.
+                pendingOrders[i] = std::move(pendingOrders.back());
+                pendingOrders.pop_back();
+                // Do NOT increment 'i', process the swapped element next iteration
+            } catch (const std::exception& e) {
+                Utils::logMessage("Broker::processOrders Error: Exception processing order: " + std::string(e.what()));
+                // Skip this order and move to the next one
+                pendingOrders[i] = std::move(pendingOrders.back());
+                pendingOrders.pop_back();
+            } catch (...) {
+                Utils::logMessage("Broker::processOrders Error: Unknown exception processing order");
+                // Skip this order and move to the next one
+                pendingOrders[i] = std::move(pendingOrders.back());
+                pendingOrders.pop_back();
             }
-
-            // Add to history and notify
-            orderHistory.push_back(order);
-            strategy->notifyOrder(order);
-            it = pendingOrders.erase(it); // Remove from pending
-
-        } else { // Checks failed
-            // Update status, add to history, notify, remove from pending
-            order.executionTime = currentBar.timestamp; // Mark time of rejection
-            orderHistory.push_back(order);
-            strategy->notifyOrder(order);
-            it = pendingOrders.erase(it); // Remove from pending
-        }
-
-    } // End while loop through pending orders
+        } // End for loop
+    } catch (const std::exception& e) {
+        Utils::logMessage("Broker::processOrders Error: Exception caught: " + std::string(e.what()));
+    } catch (...) {
+        Utils::logMessage("Broker::processOrders Error: Unknown exception caught");
+    }
 }
 
 // --- Position Info ---
@@ -346,7 +569,7 @@ const Position* Broker::getPosition(const std::string& symbol) const {
 }
 
 const std::map<std::string, Position>& Broker::getAllPositions() const {
-     return positions;
+    return positions;
 }
 
 // --- History ---

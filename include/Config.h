@@ -5,21 +5,16 @@
 #include <string>
 #include <map>
 #include <vector>
-#include <cstdint>      // <--- ADD THIS INCLUDE for int64_t etc.
-#include "json.hpp"     // <--- INCLUDE the full header HERE
-
-// Remove the complex forward declaration and using alias lines below:
-// namespace nlohmann { template<typename T, typename S, typename...> class basic_json; using json = basic_json<std::map, std::vector, std::string, bool, std::int64_t, std::uint64_t, double, std::allocator, nlohmann::adl_serializer, std::vector<std::uint8_t>>; }
-
+#include <cstdint>
+#include "json.hpp"
 
 class Config {
 private:
     // Store parsed config directly in a json object
-    nlohmann::json configData; // <--- Now this type is fully known
+    nlohmann::json configData;
     std::string configFilePath;
 
     void setDefaultValues();
-
 public:
     Config();
 
@@ -41,8 +36,5 @@ public:
 
     bool has(const std::string& key) const;
 };
-
-// Template definitions for getters/setters should remain in Config.cpp
-// Move explicit instantiations to Config.cpp if they were in the header.
 
 #endif // CONFIG_H

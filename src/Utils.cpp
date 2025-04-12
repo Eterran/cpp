@@ -9,57 +9,60 @@
 
 namespace Utils {
     // Parses "YYYYMMDD HHMMSSfff" format. Throws std::runtime_error on failure.
-    std::chrono::system_clock::time_point parseTimestamp(const std::string& timestampStr) {
+    std::chrono::system_clock::time_point parseTimestamp(const std::string& timestampStr, std::string tsFmt) {
         // Expected format length check (basic sanity)
-        if (timestampStr.length() < 18) { // "YYYYMMDD HHMMSSf" is the minimum possible valid length
+        if (timestampStr.length() < 15) { // "YYYYMMDD HHMMSS" is the minimum possible valid length
             throw std::runtime_error("Invalid timestamp format length: " + timestampStr);
         }
 
         std::tm tm = {};
-        std::stringstream ss(timestampStr.substr(0, 17)); // Parse "YYYYMMDD HHMMSS" part
+        std::stringstream ss(timestampStr.substr(0, 15)); // Parse "YYYYMMDD HHMMSS" part
 
         // Note: MSVC might require different locale setup for get_time if system locale interferes
         // ss.imbue(std::locale::classic()); // Consider if parsing fails unexpectedly
 
-        ss >> std::get_time(&tm, "%Y%m%d %H%M%S");
+        ss >> std::get_time(&tm, tsFmt.c_str()); // Use custom format string for parsing
 
         if (ss.fail()) {
-            throw std::runtime_error("Failed to parse timestamp date/time part: " + timestampStr.substr(0, 17));
+            throw std::runtime_error("Failed to parse timestamp date/time part: " + timestampStr.substr(0, 15));
         }
 
-        // Manually parse milliseconds (assuming they are the last part)
+        // Initialize milliseconds to 0 
         int milliseconds = 0;
-        std::size_t ms_pos = 17; // Position after SS
-
-        // Handle potential separator like '.' or just 'fff' directly after SS
-        if (timestampStr.length() > ms_pos && !std::isdigit(timestampStr[ms_pos])) {
-            ms_pos++; // Skip potential separator like '.' or space if format slightly differs
-        }
-
-        if (timestampStr.length() > ms_pos) {
-            std::string ms_str = timestampStr.substr(ms_pos);
-            try {
-                // Ensure we only parse digits and handle varying lengths (f, ff, fff)
-                std::string digits_only;
-                for(char c : ms_str) {
-                    if (std::isdigit(c)) {
-                        digits_only += c;
-                    } else {
-                        break; // Stop at first non-digit
+        
+        // Only try to parse milliseconds if there are more characters available
+        if (timestampStr.length() > 15) {
+            std::size_t ms_pos = 15; // Position after SS
+            
+            // Handle potential separator like '.' or just 'fff' directly after SS
+            if (timestampStr.length() > ms_pos && !std::isdigit(timestampStr[ms_pos])) {
+                ms_pos++; // Skip potential separator like '.' or space if format slightly differs
+            }
+            
+            if (timestampStr.length() > ms_pos) {
+                std::string ms_str = timestampStr.substr(ms_pos);
+                try {
+                    // Ensure we only parse digits and handle varying lengths (f, ff, fff)
+                    std::string digits_only;
+                    for(char c : ms_str) {
+                        if (std::isdigit(c)) {
+                            digits_only += c;
+                        } else {
+                            break; // Stop at first non-digit
+                        }
                     }
+                    if (!digits_only.empty()) {
+                        // Pad with zeros if needed (e.g., "1" -> 100ms, "12" -> 120ms)
+                        digits_only.resize(3, '0');
+                        milliseconds = std::stoi(digits_only);
+                    }
+                } catch (const std::exception& e) {
+                    // Ignore potential errors like stoi failing if ms part is weird, default to 0 ms
+                    Utils::logMessage("Warning: Could not parse milliseconds from '" + ms_str + "': " + e.what());
+                    milliseconds = 0;
                 }
-                if (!digits_only.empty()) {
-                    // Pad with zeros if needed (e.g., "1" -> 100ms, "12" -> 120ms)
-                    digits_only.resize(3, '0');
-                    milliseconds = std::stoi(digits_only);
-                }
-            } catch (const std::exception& e) {
-                // Ignore potential errors like stoi failing if ms part is weird, default to 0 ms
-                Utils::logMessage("Warning: Could not parse milliseconds from '" + ms_str + "': " + e.what());
-                milliseconds = 0;
             }
         }
-
 
         // Convert std::tm to time_point (Note: timegm is non-standard but common on Linux/macOS, _mkgmtime on Windows)
         // Using C++20 chrono features would simplify this significantly. Pre-C++20 is more complex.
@@ -76,11 +79,9 @@ namespace Utils {
             // std::time_t time_c = timegm(&tm);
         #endif
 
-
         if (time_c == -1) {
             throw std::runtime_error("Failed to convert std::tm to time_t for: " + timestampStr);
         }
-
 
         auto time_point = std::chrono::system_clock::from_time_t(time_c);
         time_point += std::chrono::milliseconds(milliseconds);
@@ -138,14 +139,13 @@ namespace Utils {
         std::cout << "[" << buffer << "." << std::setfill('0') << std::setw(3) << millis.count() << "] " << message << std::endl;
     }
 
-    // Calculates pip point based on pair name convention.
-    double calculatePipPoint(const std::string& pairName) {
-        // Simple check: if "JPY" is anywhere in the name, assume 0.01 pip value.
-        if (pairName.find("JPY") != std::string::npos) {
-            return 0.01;
-        }
-        // Otherwise, assume standard 4 decimal pip value.
-        return 0.0001;
+    std::string timePointToString(const std::chrono::system_clock::time_point& tp) {
+        std::time_t timeT = std::chrono::system_clock::to_time_t(tp);
+        std::tm tm;
+        localtime_s(&tm, &timeT); // thread safe?
+    
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+        return oss.str();
     }
-
 }

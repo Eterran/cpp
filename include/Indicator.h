@@ -2,7 +2,7 @@
 #ifndef INDICATOR_H
 #define INDICATOR_H
 
-#include "Bar.h" // Needs Bar definition for update method
+#include "Bar.h"
 #include <vector>
 #include <string>
 #include <limits> // For quiet_NaN

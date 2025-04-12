@@ -2,7 +2,10 @@
 #define BAR_H
 
 #include <chrono>
-#include <string> // Often useful, e.g., if adding a toString() method later
+#include <string> 
+#include <array>
+#include <vector>
+#include <variant>
 
 // Represents a single time period's data (OHLCV + Bid/Ask)
 struct Bar {
@@ -13,15 +16,51 @@ struct Bar {
     double close = 0.0;
     double bid = 0.0;
     double ask = 0.0;
-    long long volume = 0; // Use long long for potentially large volumes
+    long long volume = 0;
 
-    // Helper function to get the mid-price (as used in Python preprocessing)
+    std::vector<std::variant<double, int, long long>> extraColumns;
+
+    double getOpen() const {
+        if(open != 0.0) {
+            return open;
+        } else return close;
+    }
+
+    double getHigh() const {
+        if(high != 0.0) {
+            return high;
+        } else return close;
+    }
+
+    double getLow() const {
+        if(low != 0.0) {
+            return low;
+        } else return close;
+    }
+
+    double getClose() const {
+        if(close != 0.0) {
+            return close;
+        } else return 0.0;
+    }
+
+    double getBid() const {
+        if(bid != 0.0) {
+            return bid;
+        } else return close;
+    }
+
+    double getAsk() const {
+        if(ask != 0.0) {
+            return ask;
+        } else return close;
+    }
+
     double midPrice() const {
-        // Avoid division by zero if bid/ask somehow are zero (unlikely but safe)
         if (bid != 0.0 || ask != 0.0) {
-             return (bid + ask) / 2.0;
+            return (bid + ask) / 2.0;
         }
-        return 0.0; // Or handle as an error/NaN depending on requirements
+        return 0.0;
     }
 };
 

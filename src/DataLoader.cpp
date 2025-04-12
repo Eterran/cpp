@@ -7,17 +7,16 @@
 #include <limits>
 #include <cmath>
 #include <vector>
-#include <charconv> // For efficient string to number parsing (C++17)
+#include <charconv>
 
 // Constructor takes Config reference
 DataLoader::DataLoader(const Config& cfg) :
-    config(cfg), // Store reference
-    // Get path from config during construction or loading? Let's get it here.
+    config(cfg),
     filePath(config.getNested<std::string>("/Data/INPUT_CSV_PATH", ""))
 {
     if (filePath.empty()) {
         Utils::logMessage("DataLoader Warning: No INPUT_CSV_PATH found in config.");
-        // Optionally throw, or allow loading to fail later
+        // THROW ERROR
     }
 }
 
@@ -28,7 +27,6 @@ long long DataLoader::countLines() const {
     if (!file.is_open()) {
         return -1;
     }
-    // Simplified line counting (can be slow)
     long long lineCount = 0;
     std::string line;
     while (std::getline(file, line)) {
@@ -37,37 +35,26 @@ long long DataLoader::countLines() const {
     return lineCount;
 }
 
-// NEW: Internal parsing helper based on config
+// Internal parsing helper based on config
 bool DataLoader::parseLine(const std::string& line, Bar& bar) const {
-    // Get format specifics from config (cache these in constructor for performance?)
-    char delimiter = config.getNested<std::string>("/Data/CSV_Delimiter", ",")[0]; // Get first char
+    char delimiter = config.getNested<std::string>("/Data/CSV_Delimiter", ",")[0];
     int tsCol = config.getNested<int>("/Data/CSV_Timestamp_Col", 0);
-    std::string tsFmt = config.getNested<std::string>("/Data/CSV_Timestamp_Format", "%Y%m%d %H%M%S%f");
-    int bidCol = config.getNested<int>("/Data/CSV_Bid_Col", 1);
-    int askCol = config.getNested<int>("/Data/CSV_Ask_Col", 2);
-    int volCol = config.getNested<int>("/Data/CSV_Volume_Col", 3);
-    // Add Open, High, Low, Close columns if needed later
+    std::string tsFmt = config.getNested<std::string>("/Data/CSV_Timestamp_Format", "%Y%m%d %H%M%S");
+    // Utils::logMessage("ts format: " + tsFmt);
+
+    int bidCol = config.getNested<int>("/Data/CSV_Bid_Col", -1);
+    int askCol = config.getNested<int>("/Data/CSV_Ask_Col", -1);
+    int volCol = config.getNested<int>("/Data/CSV_Volume_Col", -1);
 
     std::stringstream ss(line);
     std::string field;
     std::vector<std::string> fields;
 
-    // Split line by delimiter
     while (std::getline(ss, field, delimiter)) {
-        // Trim whitespace (optional, but good practice)
-        // field.erase(0, field.find_first_not_of(" \t\n\r\f\v"));
-        // field.erase(field.find_last_not_of(" \t\n\r\f\v") + 1);
+        // Trim whitespace
+        field.erase(0, field.find_first_not_of(" \t\n\r\f\v"));
+        field.erase(field.find_last_not_of(" \t\n\r\f\v") + 1);
         fields.push_back(field);
-    }
-
-    // Find the maximum required column index
-    int maxIndex = 0;
-    maxIndex = std::max({maxIndex, tsCol, bidCol, askCol, volCol});
-    // Add indices for O,H,L,C if used
-
-    if (static_cast<int>(fields.size()) <= maxIndex) {
-        Utils::logMessage("DataLoader::parseLine Warning: Not enough fields (" + std::to_string(fields.size()) + ") in line for configured columns (max index " + std::to_string(maxIndex) + "). Line: " + line);
-        return false;
     }
 
     try {
@@ -77,61 +64,104 @@ bool DataLoader::parseLine(const std::string& line, Bar& bar) const {
         // Assuming Utils::parseTimestamp is hardcoded to "%Y%m%d %H%M%S%f" for now.
         // TODO: Modify Utils::parseTimestamp to accept a format string if needed.
         if (tsCol < 0 || tsCol >= fields.size()) throw std::out_of_range("Timestamp column index invalid");
-        bar.timestamp = Utils::parseTimestamp(fields[tsCol]);
+        bar.timestamp = Utils::parseTimestamp(fields[tsCol], tsFmt);
 
         // --- Parse Bid/Ask/Volume ---
         // Using std::from_chars for potentially better performance than stod/stoll
         auto parse_double = [&](int colIndex, double& out_val) {
-             if (colIndex < 0 || colIndex >= fields.size()) throw std::out_of_range("Column index invalid for double");
-             const std::string& s = fields[colIndex];
-             auto result = std::from_chars(s.data(), s.data() + s.size(), out_val);
-             // Check if parsing succeeded and consumed the whole string part intended
-             if (result.ec != std::errc() || result.ptr != s.data() + s.size()) {
-                 // Fallback or stricter error? Fallback to stod for flexibility?
-                 // Let's throw for now if from_chars fails completely.
-                  if (result.ec == std::errc::result_out_of_range) throw std::out_of_range("Double value out of range");
-                  // Try stod as fallback? No, stick to stricter parsing.
-                  throw std::invalid_argument("Invalid double format");
-             }
+            if (colIndex < 0 || colIndex >= fields.size()) return false; // Return false if column not configured or invalid
+            const std::string& s = fields[colIndex];
+            auto result = std::from_chars(s.data(), s.data() + s.size(), out_val);
+            // Check if parsing succeeded and consumed the whole string part intended
+            if (result.ec != std::errc() || result.ptr != s.data() + s.size()) {
+                // Let's throw for now if from_chars fails completely.
+                if (result.ec == std::errc::result_out_of_range) throw std::out_of_range("Double value out of range");
+                throw std::invalid_argument("Invalid double format");
+            }
+            return true;
         };
-         auto parse_long = [&](int colIndex, long long& out_val) {
-             if (colIndex < 0 || colIndex >= fields.size()) throw std::out_of_range("Column index invalid for long long");
-              const std::string& s = fields[colIndex];
-              auto result = std::from_chars(s.data(), s.data() + s.size(), out_val);
-               if (result.ec != std::errc() || result.ptr != s.data() + s.size()) {
-                    if (result.ec == std::errc::result_out_of_range) throw std::out_of_range("Long long value out of range");
-                   throw std::invalid_argument("Invalid integer format");
-               }
-         };
+        
+        auto parse_long = [&](int colIndex, long long& out_val) {
+            if (colIndex < 0 || colIndex >= fields.size()) return false; // Return false if column not configured or invalid
+            const std::string& s = fields[colIndex];
+            auto result = std::from_chars(s.data(), s.data() + s.size(), out_val);
+            if (result.ec != std::errc() || result.ptr != s.data() + s.size()) {
+                if (result.ec == std::errc::result_out_of_range) throw std::out_of_range("Long long value out of range");
+                throw std::invalid_argument("Invalid integer format");
+            }
+            return true;
+        };
 
-        parse_double(bidCol, bar.bid);
-        parse_double(askCol, bar.ask);
-        parse_long(volCol, bar.volume);
-
-
-        // --- Calculate OHLC ---
-        // Currently calculated from Mid price, assuming M1 data
-        // TODO: Add logic to parse O,H,L,C directly from CSV if columns are configured
-        double mid = bar.midPrice();
-         if (mid == 0.0 && (bar.bid != 0.0 || bar.ask != 0.0)) {
-            Utils::logMessage("DataLoader::parseLine Warning: Bid/Ask result in zero mid-price. Line: " + line);
-            return false; // Skip bars with zero mid unless bid/ask are also zero
-         } else if (bar.bid == 0.0 && bar.ask == 0.0) {
-              // Handle bars with zero bid/ask (e.g., use previous close, or skip)
-               Utils::logMessage("DataLoader::parseLine Warning: Bid and Ask are both zero. Setting OHLC to zero. Line: " + line);
-               // Set OHLC to 0, strategy should handle this if necessary
-               bar.open = bar.high = bar.low = bar.close = 0.0;
-               // Or return false to skip the bar entirely? Skipping might be safer.
-               // return false;
-         } else {
-            bar.open = mid;
-            bar.high = mid; // Approximation for M1
-            bar.low = mid;  // Approximation for M1
+        // Get OHLC columns
+        int openCol = config.getNested<int>("/Data/CSV_Open_Col", -1);
+        int highCol = config.getNested<int>("/Data/CSV_High_Col", -1);
+        int lowCol = config.getNested<int>("/Data/CSV_Low_Col", -1);
+        int closeCol = config.getNested<int>("/Data/CSV_Close_Col", -1);
+        
+        // Parse OHLC first if available
+        bool hasOpen = parse_double(openCol, bar.open);
+        bool hasHigh = parse_double(highCol, bar.high);
+        bool hasLow = parse_double(lowCol, bar.low);
+        bool hasClose = parse_double(closeCol, bar.close);
+        
+        // Parse bid/ask/volume
+        bool hasBid = parse_double(bidCol, bar.bid);
+        bool hasAsk = parse_double(askCol, bar.ask);
+        bool hasVolume = parse_long(volCol, bar.volume);
+        
+        // Handle fallbacks based on available data
+        if (!hasVolume) {
+            bar.volume = 0; // Default volume to 0 if not available
+        }
+        
+        // Apply fallbacks for price data
+        if (hasClose) {
+            // Use close as fallback for missing bid/ask
+            if (!hasBid) bar.bid = bar.close;
+            if (!hasAsk) bar.ask = bar.close;
+            
+            // Use close for missing OHLC components
+            if (!hasOpen) bar.open = bar.close;
+            if (!hasHigh) bar.high = bar.close;
+            if (!hasLow) bar.low = bar.close;
+        } 
+        else if (hasBid && hasAsk) {
+            // No close but have bid/ask - calculate mid for OHLC
+            double mid = bar.midPrice();
+            if (!hasOpen) bar.open = mid;
+            if (!hasHigh) bar.high = mid;
+            if (!hasLow) bar.low = mid;
             bar.close = mid;
-         }
+        }
+        else if (hasBid) {
+            // Only have bid - use it for everything
+            if (!hasAsk) bar.ask = bar.bid;
+            if (!hasOpen) bar.open = bar.bid;
+            if (!hasHigh) bar.high = bar.bid;
+            if (!hasLow) bar.low = bar.bid;
+            bar.close = bar.bid;
+        }
+        else if (hasAsk) {
+            // Only have ask - use it for everything
+            if (!hasBid) bar.bid = bar.ask;
+            if (!hasOpen) bar.open = bar.ask;
+            if (!hasHigh) bar.high = bar.ask;
+            if (!hasLow) bar.low = bar.ask;
+            bar.close = bar.ask;
+        }
+        else {
+            // No price data available
+            Utils::logMessage("DataLoader::parseLine Warning: No price data found in line: " + line);
+            return false;
+        }
 
+        // Final validation
+        if (bar.bid == 0.0 && bar.ask == 0.0 && bar.close == 0.0) {
+            Utils::logMessage("DataLoader::parseLine Warning: All prices are zero. Line: " + line);
+            return false;
+        }
 
-        return true; // Success
+        return true;
 
     } catch (const std::invalid_argument& e) {
         Utils::logMessage("DataLoader::parseLine Warning: Invalid numeric format: " + std::string(e.what()) + ". Line: " + line);
@@ -141,7 +171,7 @@ bool DataLoader::parseLine(const std::string& line, Bar& bar) const {
         Utils::logMessage("DataLoader::parseLine Warning: Error processing line: " + std::string(e.what()) + ". Line: " + line);
     }
 
-    return false; // Failure
+    return false;
 }
 
 
@@ -171,16 +201,16 @@ std::vector<Bar> DataLoader::loadData(bool usePartial, double partialPercent) {
     // --- Partial Load Logic (remains similar) ---
     if (usePartial && partialPercent > 0 && partialPercent < 100.0) {
         // ... (counting logic as before) ...
-         Utils::logMessage("DataLoader: Partial load requested (" + std::to_string(partialPercent) + "%).");
-         long long totalLines = countLines();
-         if (totalLines <= 0) {
-             Utils::logMessage("DataLoader Warning: Could not count lines or file empty for partial load. Loading full file.");
-             linesToRead = -1; // Reset to read all
-         } else {
-              linesToRead = static_cast<long long>(std::ceil(totalLines * (partialPercent / 100.0)));
-              if (linesToRead <= 0) linesToRead = 1;
-              Utils::logMessage("DataLoader: Total lines estimated: " + std::to_string(totalLines) + ". Will read approx. " + std::to_string(linesToRead) + " data lines.");
-         }
+        Utils::logMessage("DataLoader: Partial load requested (" + std::to_string(partialPercent) + "%).");
+        long long totalLines = countLines();
+        if (totalLines <= 0) {
+            Utils::logMessage("DataLoader Warning: Could not count lines or file empty for partial load. Loading full file.");
+            linesToRead = -1; // Reset to read all
+        } else {
+            linesToRead = static_cast<long long>(std::ceil(totalLines * (partialPercent / 100.0)));
+            if (linesToRead <= 0) linesToRead = 1;
+            Utils::logMessage("DataLoader: Total lines estimated: " + std::to_string(totalLines) + ". Will read approx. " + std::to_string(linesToRead) + " data lines.");
+        }
     }
 
     // --- Main Reading Loop ---
@@ -213,7 +243,7 @@ std::vector<Bar> DataLoader::loadData(bool usePartial, double partialPercent) {
             // parseLine already logs warnings/errors
         }
 
-    } // end while getline
+    }
 
     Utils::logMessage("DataLoader: Finished loading. Read " + std::to_string(data.size()) + " valid bars from " + std::to_string(currentLineNum) + " total lines processed.");
     return data;

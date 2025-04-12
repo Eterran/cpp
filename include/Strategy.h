@@ -4,14 +4,13 @@
 
 #include "Bar.h"
 #include "Order.h"
-// #include "Broker.h" // Forward declare instead to avoid circular include
 #include <vector>
 #include <string>
 #include <map> // Include map for passing current prices
 
 // Forward declarations
-class Broker; // Let Strategy know Broker exists
-struct Config; // Let Strategy know Config exists (defined in Phase 4)
+class Broker;
+class Config;
 
 class Strategy {
 protected:
@@ -34,12 +33,11 @@ public:
     // Called once before the backtest loop starts
     virtual void init() = 0;
     // Called for each bar of data after broker processing for that bar
-    virtual void next(const Bar& currentBar, const std::map<std::string, double>& currentPrices) = 0;
+    virtual void next(const Bar& currentBar, size_t currentBarIndex, const std::map<std::string, double>& currentPrices) = 0;
     // Called once after the backtest loop finishes
     virtual void stop() = 0;
     // Called by the Broker when an order status changes
     virtual void notifyOrder(const Order& order) = 0;
-
 };
 
 #endif // STRATEGY_H

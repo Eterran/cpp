@@ -6,9 +6,6 @@
 #include <chrono>
 #include <limits> // For numeric_limits
 
-// Forward declare Strategy to avoid circular dependency if Order needs Strategy info
-// class Strategy;
-
 enum class OrderType {
     BUY,
     SELL
@@ -19,6 +16,7 @@ enum class OrderStatus {
     SUBMITTED,  // Handed to broker simulation
     ACCEPTED,   // Basic checks passed (e.g., positive size) - Optional intermediate state
     FILLED,     // Successfully executed
+    CLOSED,
     CANCELLED,  // Order cancelled before filling
     REJECTED,   // Broker rejected (e.g., insufficient funds/margin)
     MARGIN      // Rejected specifically due to margin
@@ -45,6 +43,8 @@ struct Order {
     double requestedPrice = 0.0;      // For Limit/Stop orders (0.0 for Market)
     double filledPrice = 0.0;         // Average price at which the order was filled
     double commission = 0.0;          // Commission charged for this order execution
+    double takeProfit = 0.0;          // Price at which to take profit (0.0 if not set)
+    double stopLoss = 0.0;            // Price at which to stop loss (0.0 if not set)
     std::chrono::system_clock::time_point creationTime{};
     std::chrono::system_clock::time_point executionTime{};
     // int strategyId = -1; // Optional: If multiple strategies run concurrently

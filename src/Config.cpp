@@ -1,10 +1,10 @@
 // Config.cpp
 #include "Config.h"
-#include "Utils.h"      // For logging
-#include "json.hpp"     // Include the nlohmann json header
+#include "Utils.h" 
+#include "json.hpp"
 #include <fstream>
 #include <iomanip>     // For std::setw in saving JSON
-#include <stdexcept>   // For exceptions
+#include <stdexcept>
 #include <cstdint> 
 
 using json = nlohmann::json;
@@ -20,22 +20,19 @@ void Config::setDefaultValues() {
     configData = {
         {"Data", {
             {"SourceType", "CSV"}, // Added: Type of source (CSV, WebSocket, Database etc.) - For future use
-            {"INPUT_CSV_PATH", "E:/histdata/combined/2014_01-2014_12_M1_USDJPY.csv"},
+            {"INPUT_CSV_PATH", "E:/UMHack/btc_market_data.csv"},
             {"USE_PARTIAL_DATA", true},
             {"PARTIAL_DATA_PERCENT", 20.0},
 
-            // --- NEW CSV FORMAT CONFIG ---
             {"CSV_Timestamp_Col", 0},        // Column index (0-based) or Name (if header exists)
-            {"CSV_Timestamp_Format", "%Y%m%d %H%M%S%f"}, // strptime/get_time format + "%f" for custom ms handling
-            {"CSV_Bid_Col", 1},
-            {"CSV_Ask_Col", 2},
-            {"CSV_Volume_Col", 3},
-            // {"CSV_Open_Col", -1}, // Optional: Use -1 if not present or calculated
+            {"CSV_Timestamp_Format", "%Y-%m-%d %H:%M:%S"}, // strptime/get_time format + "%f" for custom ms handling
+            // {"CSV_Open_Col", 1},              // Optional: Use -1 if not present or calculated
+            {"CSV_Close_Col", 1},
+            // {"CSV_Volume_Col", 3},
             // {"CSV_High_Col", -1},
-            // {"CSV_Low_Col", -1},
             // {"CSV_Close_Col", -1},
             {"CSV_Delimiter", ","},
-            {"CSV_Has_Header", false}
+            {"CSV_Has_Header", true}
         }},
         {"Broker", {
             {"STARTING_CASH", 1000.0},
@@ -45,17 +42,18 @@ void Config::setDefaultValues() {
         {"Strategy", {
             {"STRATEGY_NAME", "Random"},
             {"DEBUG_MODE", false},
-            {"SMA_PERIOD", 36000},
+            // {"SMA_PERIOD", 36000},
             {"POSITION_TYPE", "fixed"}, // "fixed", "percent", "risk"
             {"FIXED_SIZE", 20.0},
-            {"CASH_PERCENT", 2.0},
-            {"RISK_PERCENT", 1.0},
-            {"STOP_LOSS_PIPS", 100.0},
+            // {"CASH_PERCENT", 2.0},
+            // {"RISK_PERCENT", 1.0},
+            {"STOP_LOSS_PIPS", 50.0},
             {"STOP_LOSS_ENABLED", true},
+            {"TAKE_PROFIT_ENABLED", true},
+            {"TAKE_PROFIT_PIPS", 50.0},
+            
             {"BANKRUPTCY_PROTECTION", true},
             {"FORCE_EXIT_PERCENT", -50.0},
-            {"TAKE_PROFIT_ENABLED", true},
-            {"TAKE_PROFIT_PIPS", 100.0}
         }}
     };
 }
@@ -63,20 +61,18 @@ void Config::setDefaultValues() {
 
 // --- Load from File ---
 bool Config::loadFromFile(const std::string& filename) {
-    configFilePath = filename; // Store path for potential saving later
+    configFilePath = filename;
     std::ifstream ifs(filename);
 
     if (!ifs.is_open()) {
         Utils::logMessage("Config Warning: Config file not found at '" + filename + "'.");
         Utils::logMessage("Config: Creating default config file...");
-        setDefaultValues(); // Ensure defaults are loaded in memory
-        if (saveToFile(filename)) { // Attempt to save the defaults
+        setDefaultValues();
+        if (saveToFile(filename)) {
             Utils::logMessage("Config: Default config file created successfully at '" + filename + "'.");
-            // Continue using default values loaded in memory
-            return true; // Consider this a "success" as defaults are now active and saved
+            return true; 
         } else {
             Utils::logMessage("Config Error: Failed to create default config file at '" + filename + "'. Using internal defaults.");
-            // Continue using default values loaded in memory, but file doesn't exist
             return false; // Indicate failure to load/create persisted config
         }
     }
@@ -84,7 +80,7 @@ bool Config::loadFromFile(const std::string& filename) {
     try {
         Utils::logMessage("Config: Loading configuration from '" + filename + "'...");
         json loadedData = json::parse(ifs);
-        ifs.close(); // Close file after parsing
+        ifs.close();
 
         // Merge loaded data with defaults: ensures all keys exist, loaded values override
         // This uses the json::update method (might need specific version or patch)
@@ -102,14 +98,14 @@ bool Config::loadFromFile(const std::string& filename) {
         Utils::logMessage("Config Error: Failed to parse JSON config file '" + filename + "'.");
         Utils::logMessage("  Parse error: " + std::string(e.what()));
         Utils::logMessage("  Using internal default values.");
-        ifs.close(); // Ensure file is closed
-        setDefaultValues(); // Reset to defaults on parse error
+        ifs.close();
+        setDefaultValues();
         return false;
     } catch (const std::exception& e) {
         Utils::logMessage("Config Error: An unexpected error occurred loading config '" + filename + "': " + e.what());
         Utils::logMessage("  Using internal default values.");
         if(ifs.is_open()) ifs.close();
-        setDefaultValues(); // Reset to defaults
+        setDefaultValues();
         return false;
     }
 }
@@ -148,7 +144,7 @@ T Config::get(const std::string& key, const T& defaultValue) const {
         try {
             return configData.at(key).get<T>();
         } catch (const json::exception& e) {
-             Utils::logMessage("Config Warning: Type mismatch or error getting key '" + key + "'. Using default. Error: " + e.what());
+            Utils::logMessage("Config Warning: Type mismatch or error getting key '" + key + "'. Using default. Error: " + e.what());
             return defaultValue;
         }
     }
@@ -164,12 +160,12 @@ T Config::getNested(const std::string& keyPath, const T& defaultValue) const {
         if (configData.contains(ptr)) { // Check using pointer
             return configData.at(ptr).get<T>(); // Access using pointer
         } else {
-             Utils::logMessage("Config Warning: Nested key path '" + keyPath + "' not found. Using default value.");
+            //Utils::logMessage("Config Warning: Nested key path '" + keyPath + "' not found. Using default value.");
             return defaultValue;
         }
     } catch (const json::parse_error& pe) { // Catch pointer format errors
-         Utils::logMessage("Config Warning: Invalid key path format '" + keyPath + "'. Using default. Error: " + pe.what());
-         return defaultValue;
+        Utils::logMessage("Config Warning: Invalid key path format '" + keyPath + "'. Using default. Error: " + pe.what());
+        return defaultValue;
     } catch (const json::exception& e) { // Catch other json errors (type, out_of_range)
         Utils::logMessage("Config Warning: Error accessing nested key '" + keyPath + "'. Using default. Error: " + e.what());
         return defaultValue;
@@ -186,19 +182,19 @@ std::string Config::getString(const std::string& key, const std::string& default
     // return getNested<std::string>(key, defaultValue); // Use this if key is expected like "/Strategy/POS..."
 
     // Using simple top-level: assumes key is just "STRATEGY_NAME"
-    return get<std::string>(key, defaultValue); // Use this if key is simple top-level
+    return get<std::string>(key, defaultValue);
 }
 
 
 // --- Setter ---
 template <typename T>
 void Config::set(const std::string& key, const T& value) {
-     // Similar decision for set: top-level or nested path?
-     // Assuming top-level for now. Use json_pointer for nested.
+    // Similar decision for set: top-level or nested path?
+    // Assuming top-level for now. Use json_pointer for nested.
     try {
         configData[key] = value;
     } catch (const json::exception& e) {
-         Utils::logMessage("Config Error: Failed to set key '" + key + "'. Error: " + e.what());
+        Utils::logMessage("Config Error: Failed to set key '" + key + "'. Error: " + e.what());
     }
     // Example nested set:
     // try {

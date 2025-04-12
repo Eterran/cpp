@@ -3,14 +3,14 @@
 #define BACKTESTENGINE_H
 
 #include "Config.h"
-#include "DataLoader.h"
 #include "Broker.h"
-#include "Strategy.h" // Include Strategy base class
+#include "Strategy.h"
 #include "Bar.h"
+#include "DataLoader.h"
 #include <vector>
 #include <string>
-#include <memory> // For std::unique_ptr
-#include <map>    // For currentPrices
+#include <memory>
+#include <map> 
 
 class BacktestEngine {
 private:
@@ -18,9 +18,10 @@ private:
     std::vector<Bar> historicalData;
     std::unique_ptr<Broker> broker; // Broker managed by engine
     std::unique_ptr<Strategy> strategy; // Strategy managed by engine
-    DataLoader dataLoader;
     size_t currentBarIndex;
     std::map<std::string, double> currentPrices; // Map symbol to current price (close)
+
+    DataLoader dataLoader;
 
     std::string primaryDataName; // Store the name of the main data series
 
@@ -37,7 +38,6 @@ public:
 
     // --- Execution ---
     void run();
-
 };
 
 #endif // BACKTESTENGINE_H

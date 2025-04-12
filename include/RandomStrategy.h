@@ -1,13 +1,15 @@
-#ifndef RANDOMSTRATEGY50_H
-#define RANDOMSTRATEGY50_H
+#ifndef RANDOMSTRATEGY_H
+#define RANDOMSTRATEGY_H
 
 #include "Strategy.h"
 #include "Position.h"
 #include "Config.h"
 #include "Utils.h"
+#include "TradingMetrics.h"
 #include <random>
+#include <memory>
 
-class RandomStrategy50 : public Strategy {
+class RandomStrategy : public Strategy {
 private:
     // --- Parameters ---
     double entryProbability = 0.01;    // Chance per bar to attempt entry
@@ -17,26 +19,25 @@ private:
     // --- State ---
     Position currentPosition;
     bool inPosition = false;
-    int currentPendingOrderId = -1;
-    double startingAccountValue = 0.0;
-    int tradeCount = 0;
-    int profitableTrades = 0;
+    int currentOrderId = -1;
+    
+    // --- Metrics Tracking ---
+    std::unique_ptr<TradingMetrics> metrics;
     
     // --- Random Number Generation ---
     std::mt19937 rng;
     std::uniform_real_distribution<double> probDist;   // For entry probability
     std::uniform_int_distribution<int> directionDist;  // For long/short decision
-    std::uniform_int_distribution<int> outcomeGen;     // For 50/50 win/loss outcome
 
 public:
-    RandomStrategy50();
-    std::string getName() { return "Random50"; }
+    RandomStrategy();
+    virtual std::string getName() const override { return "RandomStrategy"; };
     
     // --- Overridden Lifecycle Methods ---
     void init() override;
-    void next(const Bar& currentBar, const std::map<std::string, double>& currentPrices) override;
+    void next(const Bar& currentBar, size_t currentBarIndex, const std::map<std::string, double>& currentPrices) override;
     void stop() override;
     void notifyOrder(const Order& order) override;
 };
 
-#endif // RANDOMSTRATEGY50_H
+#endif // RANDOMSTRATEGY_H

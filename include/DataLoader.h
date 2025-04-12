@@ -1,9 +1,9 @@
-// DataLoader.h - No major changes needed to the interface for now
+// DataLoader.h
 #ifndef DATALOADER_H
 #define DATALOADER_H
 
 #include "Bar.h"
-#include "Config.h" // Include Config to pass it
+#include "Config.h"
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -14,7 +14,7 @@ private:
     const Config& config; // Use const reference
     std::string filePath; // Keep track of the specific file path if loaded
 
-    // Helper to count lines (still potentially needed for partial load)
+    // Helper to count lines
     long long countLines() const;
 
     // NEW: Internal parsing helper based on config

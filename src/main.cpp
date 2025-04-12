@@ -1,71 +1,92 @@
 // main.cpp
 #include "Config.h"
 #include "BacktestEngine.h"
-#include "SmaCrossStrategy.h"
-#include "RandomStrategy50.h"
+#include "RandomStrategy.h"
 #include "Utils.h"
 #include <iostream>
 #include <memory>
-#include <string> // Include string
+#include <string>
+#include <limits> // Add this for std::numeric_limits
 
 // Helper function to wait for user input before exiting
 void waitForKeypress() {
-    std::cout << "\nPress any key to close..." << std::endl;
-    std::cin.get();
+    Utils::logMessage("Program finished - waiting for user input before closing");
+    std::cout << "\nPress Enter key to close..." << std::endl;
+
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    
+    // Use getchar() as an alternative to cin.get()
+    getchar();
 }
 
 int main() {
-    Utils::logMessage("--- C++ Backtester Starting ---");
-
-    // 1. Create and Load Configuration
-    Config config;
-    std::string configFilename = "config.json"; // Define config file name
-    if (!config.loadFromFile(configFilename)) {
-        // Log message already handled in loadFromFile if creation failed
-        // Decide if you want to exit if loading/creation failed.
-        // For now, it continues with internal defaults if file couldn't be saved.
-        Utils::logMessage("Main Warning: Proceeding with internal default configuration.");
-    }
-
-    // Example: Override a value after loading (e.g., from command line later)
-    // config.set<bool>("/Strategy/DEBUG_MODE"_json_pointer, true); // Using json_pointer syntax
-
-    // 2. Create Backtest Engine (Pass the loaded config)
-    std::unique_ptr<BacktestEngine> engine;
     try {
-        engine = std::make_unique<BacktestEngine>(config); // Pass config object by const reference
-    } catch (const std::exception& e) {
-        Utils::logMessage("Main Error: Failed to create Backtest Engine: " + std::string(e.what()));
-        std::cerr << "Main Error: Failed to create Backtest Engine: " << e.what() << std::endl;
-        waitForKeypress();
-        return 1;
-    }
+        Utils::logMessage("--- C++ Backtester Starting ---");
 
-    // 3. Load Data into Engine (Engine gets path from its config copy)
-    if (!engine->loadData()) {
-        Utils::logMessage("Main Error: Failed to load data. Exiting.");
-        std::cerr << "Main Error: Failed to load data. Exiting." << std::endl;
-        waitForKeypress();
-        return 1;
-    }
+        // 1. Create and Load Configuration
+        Config config;
+        std::string configFilename = "config.json"; // Define config file name
+        if (!config.loadFromFile(configFilename)) {
+            // Log message already handled in loadFromFile if creation failed
+            Utils::logMessage("Main Warning: Proceeding with internal default configuration.");
+            std::cout << "Warning: Using default configuration as config.json couldn't be loaded/created." << std::endl;
+        } else {
+            std::cout << "Configuration loaded successfully from " << configFilename << std::endl;
+        }
 
-    // 4. Create and Set Strategy
-    //    (Engine passes its config pointer to the strategy during setup)
-    auto strategy = std::make_unique<RandomStrategy50>();
-    Utils::logMessage("Main: Creating " + strategy->getName() + " strategy.");
-    engine->setStrategy(std::move(strategy));
+        // Example: Override a value after loading (e.g., from command line later)
+        // config.set<bool>("/Strategy/DEBUG_MODE"_json_pointer, true); // Using json_pointer syntax
 
-    // 5. Run the Backtest
-    try {
+        // 2. Create Backtest Engine (Pass the loaded config)
+        std::unique_ptr<BacktestEngine> engine;
+        try {
+            std::cout << "Creating backtest engine..." << std::endl;
+            engine = std::make_unique<BacktestEngine>(config); // Pass config object by const reference
+        } catch (const std::exception& e) {
+            Utils::logMessage("Main Error: Failed to create Backtest Engine: " + std::string(e.what()));
+            std::cerr << "Main Error: Failed to create Backtest Engine: " << e.what() << std::endl;
+            waitForKeypress();
+            return 1;
+        }
+
+        // 3. Load Data into Engine (Engine gets path from its config copy)
+        std::cout << "Loading market data..." << std::endl;
+        if (!engine->loadData()) {
+            Utils::logMessage("Main Error: Failed to load data. Exiting.");
+            std::cerr << "Main Error: Failed to load data. Exiting." << std::endl;
+            waitForKeypress();
+            return 1;
+        }
+
+        // 4. Create and Set Strategy
+        //    (Engine passes its config pointer to the strategy during setup)
+        auto strategy = std::make_unique<RandomStrategy>();
+        Utils::logMessage("Main: Creating " + strategy->getName() + " strategy.");
+        std::cout << "Creating " << strategy->getName() << " strategy..." << std::endl;
+        engine->setStrategy(std::move(strategy));
+
+        // 5. Run the Backtest
+        std::cout << "Starting backtest..." << std::endl;
         engine->run();
-    } catch (const std::exception& e) {
-        Utils::logMessage("Main Error: Uncaught exception during engine run: " + std::string(e.what()));
-        std::cerr << "Main Error: Uncaught exception during engine run: " << e.what() << std::endl;
+        std::cout << "Backtest completed successfully!" << std::endl;
+
+        Utils::logMessage("--- C++ Backtester Finished ---");
+    }
+    catch (const std::exception& e) {
+        Utils::logMessage("Main Error: Uncaught exception: " + std::string(e.what()));
+        std::cerr << "Main Error: Uncaught exception: " << e.what() << std::endl;
+        waitForKeypress();
+        return 1;
+    }
+    catch (...) {
+        Utils::logMessage("Main Error: Unknown exception occurred");
+        std::cerr << "Main Error: Unknown exception occurred" << std::endl;
         waitForKeypress();
         return 1;
     }
 
-    Utils::logMessage("--- C++ Backtester Finished ---");
+    std::cout << "About to call waitForKeypress()..." << std::endl;
     waitForKeypress();
     return 0;
 }
