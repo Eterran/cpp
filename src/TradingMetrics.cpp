@@ -34,7 +34,7 @@ void TradingMetrics::updatePortfolioValue(double currentValue) {
         double currentDrawdown;
 
         currentDrawdown = (highestValue - currentValue) / highestValue * 100.0;
-        
+
         if (currentDrawdown > maxDrawdown) {
             maxDrawdown = currentDrawdown;
         }
@@ -52,23 +52,30 @@ double TradingMetrics::getWinRate() const {
 // TODO: 365 or 252 trading days based on instrument
 double TradingMetrics::getSharpeRatio() const {
     if (returns.empty()) return 0.0;
-    
+
     // Calculate average return
     double sum = 0.0;
     for (double ret : returns) {
         sum += ret;
     }
     double meanReturn = sum / returns.size();
-    
+
     // Calculate standard deviation
     double sqSum = 0.0;
     for (double ret : returns) {
         sqSum += (ret - meanReturn) * (ret - meanReturn);
     }
     double stdDev = std::sqrt(sqSum / returns.size());
-    
+
     // Annualized Sharpe Ratio (assuming daily returns and 365 trading days)
-    return stdDev > 0 ? (meanReturn / stdDev) * std::sqrt(365) : 0.0;
+    if (stdDev <= 0 || returns.size() < 2) {
+        Utils::logMessage("Sharpe Ratio calculation: Insufficient data or zero standard deviation. Returns size: " + std::to_string(returns.size()) + ", StdDev: " + std::to_string(stdDev));
+        return 0.0;
+    }
+
+    double sharpeRatio = (meanReturn / stdDev) * std::sqrt(365);
+    Utils::logMessage("Sharpe Ratio calculation: Mean Return: " + std::to_string(meanReturn) + ", StdDev: " + std::to_string(stdDev) + ", Sharpe: " + std::to_string(sharpeRatio));
+    return sharpeRatio;
 }
 
 double TradingMetrics::getTradingFrequency() const {
@@ -78,10 +85,10 @@ double TradingMetrics::getTradingFrequency() const {
 std::string TradingMetrics::generateSummaryReport(double finalValue, const std::string& strategyName) const {
     std::stringstream report;
     report << std::fixed << std::setprecision(2);
-    
+
     double netProfit = finalValue - startingValue;
     double netProfitPercent = (startingValue > 0) ? (netProfit / startingValue * 100.0) : 0.0;
-    
+
     report << "--- " << strategyName << " Finished ---\n";
     report << "========== TRADE SUMMARY ===========\n";
     report << "Starting Portfolio Value: " << startingValue << "\n";
@@ -95,6 +102,6 @@ std::string TradingMetrics::generateSummaryReport(double finalValue, const std::
     report << "Sharpe Ratio:             " << getSharpeRatio() << "\n";
     report << "Trading Frequency:        " << getTradingFrequency() << " trades per 100 bars\n";
     report << "===================================";
-    
+
     return report.str();
 }

@@ -15,6 +15,7 @@ private:
     double entryProbability = 0.01;    // Chance per bar to attempt entry
     double benchmarkFixedSize = 1.0;   // Fixed position size
     bool debugMode = false;            // Debug output flag
+    bool one_trade = false;
     
     // --- State ---
     Position currentPosition;

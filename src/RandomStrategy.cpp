@@ -31,6 +31,7 @@ void RandomStrategy::init() {
         entryProbability = config->getNested<double>("/Strategy/ENTRY_PROBABILITY", 0.01);
         benchmarkFixedSize = config->getNested<double>("/Strategy/BENCHMARK_FIXED_SIZE", 1.0);
         debugMode = config->getNested<bool>("/Strategy/DEBUG_MODE", false);
+        one_trade = config->getNested<bool>("/Strategy/ONE_TRADE", false);
     } catch (const std::exception& e) {
         Utils::logMessage("RandomStrategy::init Warning: Error loading parameters: " + std::string(e.what()));
         // Use defaults already set in class definition
@@ -44,6 +45,12 @@ void RandomStrategy::init() {
     currentOrderId = -1;
     inPosition = false;
     double startingAccountValue = broker->getStartingCash();
+
+    // Convert entry probability from percentage to decimal if needed
+    if (entryProbability > 1.0) {
+        entryProbability = entryProbability / 100.0;
+        Utils::logMessage("Converting entry probability from percentage to decimal: " + std::to_string(entryProbability));
+    }
 
     // Initialize metrics tracker
     metrics = std::make_unique<TradingMetrics>(startingAccountValue);
@@ -61,13 +68,22 @@ void RandomStrategy::init() {
 
 // --- Per-Bar Logic ---
 void RandomStrategy::next(const Bar& , size_t currentBarIndex, const std::map<std::string, double>& currentPrices) {
+    // Log position status every 500 bars for debugging
+    if (currentBarIndex % 500 == 0 || currentBarIndex < 10) {
+        Utils::logMessage("Bar " + std::to_string(currentBarIndex) + ": inPosition=" + std::to_string(inPosition) + ", ONE_TRADE=" + std::to_string(one_trade));
+    }
+
     // --- Exit Logic (For positions) ---
-    if (inPosition) {
+    if (inPosition || one_trade) {
         return;
     }
     // --- Entry Logic ---
     else {
         double roll = probDist(rng);
+        // Log roll value every 100 bars for debugging
+        if (currentBarIndex % 100 == 0) {
+            Utils::logMessage("Bar " + std::to_string(currentBarIndex) + ": Roll=" + std::to_string(roll) + ", EntryProbability=" + std::to_string(entryProbability));
+        }
         if (roll < entryProbability) {
             // Random direction (BUY or SELL)
             OrderType entryOrderType = (directionDist(rng) == 0) ? OrderType::BUY : OrderType::SELL;
@@ -148,15 +164,23 @@ void RandomStrategy::next(const Bar& , size_t currentBarIndex, const std::map<st
     // Track portfolio value for metrics (every 10 bars to reduce overhead)
     if (currentBarIndex % 10 == 0) {
         double currentValue = broker->getValue(currentPrices);
-        metrics->updatePortfolioValue(currentValue);
 
         // Record return for Sharpe ratio calculation
         double previousValue = metrics->getPreviousValue();
-        if (previousValue > 0) {
+        if (previousValue > 0 && currentBarIndex > 0) {
             double periodReturn = (currentValue - previousValue) / previousValue;
             metrics->recordReturn(periodReturn);
+
+            // Log returns for debugging (every 100 bars)
+            if (currentBarIndex % 100 == 0) {
+                Utils::logMessage("Bar " + std::to_string(currentBarIndex) + ": Return calculation - Previous: " +
+                                std::to_string(previousValue) + ", Current: " + std::to_string(currentValue) +
+                                ", Return: " + std::to_string(periodReturn));
+            }
         }
-        previousValue = currentValue;
+
+        // Update portfolio value AFTER recording return
+        metrics->updatePortfolioValue(currentValue);
     }
 }
 
@@ -182,6 +206,7 @@ void RandomStrategy::notifyOrder(const Order& order) {
 
         // --- Entry Fill ---
         if (order.reason == OrderReason::ENTRY_SIGNAL && !inPosition) {
+            Utils::logMessage("Setting inPosition to true after entry");
             inPosition = true;
             currentPosition.symbol = order.symbol;
             currentPosition.size = (order.type == OrderType::BUY) ? order.filledSize : -order.filledSize;
@@ -196,8 +221,11 @@ void RandomStrategy::notifyOrder(const Order& order) {
         }
         // --- Exit Fill ---
         else if (inPosition && order.symbol == currentPosition.symbol &&
-                ((order.type == OrderType::SELL && currentPosition.size > 0.0) ||
-                 (order.type == OrderType::BUY && currentPosition.size < 0.0))) {
+                (order.reason == OrderReason::TAKE_PROFIT || order.reason == OrderReason::STOP_LOSS ||
+                 ((order.type == OrderType::SELL && currentPosition.size > 0.0) ||
+                  (order.type == OrderType::BUY && currentPosition.size < 0.0)))) {
+
+            Utils::logMessage("Exit order detected: Reason=" + std::to_string(static_cast<int>(order.reason)) + ", Type=" + std::to_string(static_cast<int>(order.type)) + ", Position Size=" + std::to_string(currentPosition.size));
 
             // Determine if profitable and record the trade
             bool profitable = (order.reason == OrderReason::TAKE_PROFIT);
@@ -210,6 +238,7 @@ void RandomStrategy::notifyOrder(const Order& order) {
                            + std::to_string(order.filledSize) + " @ " + std::to_string(order.filledPrice)
                            + (profitable ? " (PROFIT)" : " (LOSS)"));
 
+            Utils::logMessage("Setting inPosition to false after exit");
             inPosition = false;
             currentPosition = Position();
         }
