@@ -62,8 +62,8 @@ int main() {
         }
 
         // 3.5 See if ONNX runtime is setup correctly
-        OnnxModelInterface model = OnnxModelInterface();
-        model.PrintModelInfo();
+        // OnnxModelInterface model = OnnxModelInterface();
+        // model.PrintModelInfo();
 
         // 4. Create and Set Strategy
         //    (Engine passes its config pointer to the strategy during setup)
