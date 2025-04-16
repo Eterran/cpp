@@ -4,7 +4,8 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/third_party/**"
+                "${workspaceFolder}/third_party/**",
+                "E:/Python3132/include"
             ],
             "defines": [
                 "_DEBUG",

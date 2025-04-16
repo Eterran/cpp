@@ -1,3 +1,4 @@
+#ifdef BUILD_PYTHON_BINDINGS
 #include <pybind11/pybind11.h>
 
 namespace py = pybind11;
@@ -21,3 +22,9 @@ PYBIND11_MODULE(cppbacktester_py, m) { // Must match MODULE_NAME in CMakeLists.t
     //     .def("run", &YourBacktesterClass::run) // Bind method
     //     .def("get_results", &YourBacktesterClass::get_results);
 }
+#else
+// Empty implementation when Python bindings are not being built
+int add(int i, int j) {
+    return i + j;
+}
+#endif

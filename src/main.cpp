@@ -22,7 +22,7 @@ void waitForKeypress() {
     getchar();
 }
 
-int mainCPP() {
+int main() {
     try {
         Utils::logMessage("--- C++ Backtester Starting ---");
 

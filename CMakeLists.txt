@@ -312,7 +312,7 @@ endif()
 
 # == Executable Target ==
 if(BUILD_EXECUTABLE)
-    set(EXECUTABLE_NAME "backtest_executable") # Renamed slightly to avoid conflict if names were same
+    set(EXECUTABLE_NAME "backtest_executable")
     message(STATUS "--- Configuring Executable Target: ${EXECUTABLE_NAME} ---")
 
     # Check if main entry point exists
