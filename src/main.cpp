@@ -7,7 +7,9 @@
 #include <memory>
 #include <string>
 #include <limits> // Add this for std::numeric_limits
+#include "OnnxModelInterface.h"
 
+#ifndef PYTHON_BINDINGS
 // Helper function to wait for user input before exiting
 void waitForKeypress() {
     Utils::logMessage("Program finished - waiting for user input before closing");
@@ -19,7 +21,7 @@ void waitForKeypress() {
     getchar();
 }
 
-int main() {
+int mainCPP() {
     try {
         Utils::logMessage("--- C++ Backtester Starting ---");
 
@@ -35,7 +37,7 @@ int main() {
         }
 
         // Example: Override a value after loading (e.g., from command line later)
-        // config.set<bool>("/Strategy/DEBUG_MODE"_json_pointer, true); // Using json_pointer syntax
+        // config.set<bool>("/Strategy/DEBUG_MODE"_json_pointer, true);
 
         // 2. Create Backtest Engine (Pass the loaded config)
         std::unique_ptr<BacktestEngine> engine;
@@ -57,6 +59,10 @@ int main() {
             waitForKeypress();
             return 1;
         }
+
+        // 3.5 See if ONNX runtime is setup correctly
+        OnnxModelInterface model = OnnxModelInterface();
+        model.PrintModelInfo();
 
         // 4. Create and Set Strategy
         //    (Engine passes its config pointer to the strategy during setup)
@@ -89,3 +95,4 @@ int main() {
     waitForKeypress();
     return 0;
 }
+#endif
