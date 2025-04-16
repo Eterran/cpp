@@ -180,6 +180,10 @@ endif()
 find_path(ONNXRUNTIME_INCLUDE_DIR NAMES onnxruntime_cxx_api.h PATHS "${ORT_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
 find_library(ONNXRUNTIME_LIBRARY NAMES onnxruntime PATHS "${ORT_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
 
+# Find ONNX Runtime include and library files using the determined ORT_ROOT
+find_path(ONNXRUNTIME_INCLUDE_DIR NAMES onnxruntime_cxx_api.h PATHS "${ORT_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
+find_library(ONNXRUNTIME_LIBRARY NAMES onnxruntime PATHS "${ORT_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
+
 # ONNXRUNTIME_INCLUDE_DIR and ONNXRUNTIME_LIBRARY are now guaranteed to be found or CMake errors out.
 message(STATUS "Found ONNX Runtime Include Dir: ${ONNXRUNTIME_INCLUDE_DIR}")
 message(STATUS "Found ONNX Runtime Library: ${ONNXRUNTIME_LIBRARY}")

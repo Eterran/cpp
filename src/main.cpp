@@ -6,8 +6,9 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include <limits> // Add this for std::numeric_limits
-#include "OnnxModelInterface.h"
+#include <limits>
+#include "ModelInterface.cpp"
+#include "../include/OnnxModelInterface.h"
 
 #ifndef PYTHON_BINDINGS
 // Helper function to wait for user input before exiting
