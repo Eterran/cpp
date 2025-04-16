@@ -1,0 +1,231 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ResolveNugetPackages>false</ResolveNugetPackages>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="MinSizeRel|x64">
+      <Configuration>MinSizeRel</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelWithDebInfo|x64">
+      <Configuration>RelWithDebInfo</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{D647B7C8-157D-32FB-96C5-4BA60FC816C6}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>ZERO_CHECK</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <PreBuildEvent>
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message>Checking File Globs</Message>
+      <Command>setlocal
+E:\Programs\msys2\mingw64\bin\cmake.exe -P E:/CPP/v3/build/CMakeFiles/VerifyGlobs.cmake
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <PreBuildEvent>
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message>Checking File Globs</Message>
+      <Command>setlocal
+E:\Programs\msys2\mingw64\bin\cmake.exe -P E:/CPP/v3/build/CMakeFiles/VerifyGlobs.cmake
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <PreBuildEvent>
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message>Checking File Globs</Message>
+      <Command>setlocal
+E:\Programs\msys2\mingw64\bin\cmake.exe -P E:/CPP/v3/build/CMakeFiles/VerifyGlobs.cmake
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <PreBuildEvent>
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message>Checking File Globs</Message>
+      <Command>setlocal
+E:\Programs\msys2\mingw64\bin\cmake.exe -P E:/CPP/v3/build/CMakeFiles/VerifyGlobs.cmake
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="E:\CPP\v3\build\CMakeFiles\49e3d1aa30e7f5c6b6824c7bac200bf6\generate.stamp.rule">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Checking Build System</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+E:\Programs\msys2\mingw64\bin\cmake.exe -SE:/CPP/v3 -BE:/CPP/v3/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file E:/CPP/v3/build/CppBacktester.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\CPP\v3\CMakeLists.txt;E:\CPP\v3\build\CMakeFiles\3.30.2\CMakeCXXCompiler.cmake;E:\CPP\v3\build\CMakeFiles\3.30.2\CMakeRCCompiler.cmake;E:\CPP\v3\build\CMakeFiles\3.30.2\CMakeSystem.cmake;E:\CPP\v3\cmake\CopySharedLibs.cmake;E:\CPP\v3\cmake\FindPybind11.cmake;E:\CPP\v3\third_party\pybind11\CMakeLists.txt;E:\CPP\v3\third_party\pybind11\tools\JoinPaths.cmake;E:\CPP\v3\third_party\pybind11\tools\pybind11Common.cmake;E:\CPP\v3\third_party\pybind11\tools\pybind11NewTools.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCXXCompiler.cmake.in;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCXXCompilerABI.cpp;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCXXInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCheckCompilerFlagCommonPatterns.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCommonLanguageInclude.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCompilerIdDetection.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDependentOption.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCXXCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompilerABI.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompilerId.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompilerSupport.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineRCCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineSystem.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeFindBinUtils.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeGenericSystem.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeInitializeConfigs.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeLanguageInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakePackageConfigHelpers.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeParseImplicitIncludeInfo.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeParseImplicitLinkInfo.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeParseLibraryArchitecture.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeRCCompiler.cmake.in;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeRCInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeSystem.cmake.in;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeSystemSpecificInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeSystemSpecificInitialize.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeTestCXXCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeTestCompilerCommon.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeTestRCCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CheckCXXCompilerFlag.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CheckCXXSourceCompiles.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\ADSP-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\ARMCC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\ARMClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\AppleClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Borland-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\CMakeCommonCompilerMacros.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Clang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Cray-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\CrayClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\FujitsuClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\GHS-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IAR-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IBMClang-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Intel-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IntelLLVM-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\LCC-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\MSVC-CXX.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\MSVC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\MSVC.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\NVHPC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\OrangeC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\PGI-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\PathScale-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\SCO-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\TI-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\TIClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Tasking-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Watcom-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CompilerId\VS-10.vcxproj.in;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPackageHandleStandardArgs.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPackageMessage.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPython.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPython\Support.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\GNUInstallDirs.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CMakeDetermineLinkerId.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CheckCompilerFlag.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CheckFlagCommonConfig.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CheckSourceCompiles.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\FeatureTesting.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-Determine-CXX.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-Initialize.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-MSVC-CXX.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-MSVC.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\WindowsPaths.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\WriteBasicConfigVersionFile.cmake;E:\CPP\v3\build\CMakeFiles\cmake.verify_globs;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">E:\CPP\v3\build\CMakeFiles\generate.stamp;E:\CPP\v3\build\third_party\pybind11\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Checking Build System</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
+E:\Programs\msys2\mingw64\bin\cmake.exe -SE:/CPP/v3 -BE:/CPP/v3/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file E:/CPP/v3/build/CppBacktester.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">E:\CPP\v3\CMakeLists.txt;E:\CPP\v3\build\CMakeFiles\3.30.2\CMakeCXXCompiler.cmake;E:\CPP\v3\build\CMakeFiles\3.30.2\CMakeRCCompiler.cmake;E:\CPP\v3\build\CMakeFiles\3.30.2\CMakeSystem.cmake;E:\CPP\v3\cmake\CopySharedLibs.cmake;E:\CPP\v3\cmake\FindPybind11.cmake;E:\CPP\v3\third_party\pybind11\CMakeLists.txt;E:\CPP\v3\third_party\pybind11\tools\JoinPaths.cmake;E:\CPP\v3\third_party\pybind11\tools\pybind11Common.cmake;E:\CPP\v3\third_party\pybind11\tools\pybind11NewTools.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCXXCompiler.cmake.in;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCXXCompilerABI.cpp;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCXXInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCheckCompilerFlagCommonPatterns.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCommonLanguageInclude.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCompilerIdDetection.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDependentOption.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCXXCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompilerABI.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompilerId.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompilerSupport.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineRCCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineSystem.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeFindBinUtils.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeGenericSystem.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeInitializeConfigs.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeLanguageInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakePackageConfigHelpers.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeParseImplicitIncludeInfo.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeParseImplicitLinkInfo.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeParseLibraryArchitecture.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeRCCompiler.cmake.in;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeRCInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeSystem.cmake.in;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeSystemSpecificInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeSystemSpecificInitialize.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeTestCXXCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeTestCompilerCommon.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeTestRCCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CheckCXXCompilerFlag.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CheckCXXSourceCompiles.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\ADSP-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\ARMCC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\ARMClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\AppleClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Borland-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\CMakeCommonCompilerMacros.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Clang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Cray-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\CrayClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\FujitsuClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\GHS-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IAR-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IBMClang-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Intel-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IntelLLVM-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\LCC-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\MSVC-CXX.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\MSVC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\MSVC.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\NVHPC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\OrangeC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\PGI-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\PathScale-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\SCO-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\TI-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\TIClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Tasking-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Watcom-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CompilerId\VS-10.vcxproj.in;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPackageHandleStandardArgs.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPackageMessage.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPython.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPython\Support.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\GNUInstallDirs.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CMakeDetermineLinkerId.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CheckCompilerFlag.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CheckFlagCommonConfig.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CheckSourceCompiles.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\FeatureTesting.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-Determine-CXX.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-Initialize.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-MSVC-CXX.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-MSVC.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\WindowsPaths.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\WriteBasicConfigVersionFile.cmake;E:\CPP\v3\build\CMakeFiles\cmake.verify_globs;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">E:\CPP\v3\build\CMakeFiles\generate.stamp;E:\CPP\v3\build\third_party\pybind11\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Checking Build System</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
+E:\Programs\msys2\mingw64\bin\cmake.exe -SE:/CPP/v3 -BE:/CPP/v3/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file E:/CPP/v3/build/CppBacktester.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">E:\CPP\v3\CMakeLists.txt;E:\CPP\v3\build\CMakeFiles\3.30.2\CMakeCXXCompiler.cmake;E:\CPP\v3\build\CMakeFiles\3.30.2\CMakeRCCompiler.cmake;E:\CPP\v3\build\CMakeFiles\3.30.2\CMakeSystem.cmake;E:\CPP\v3\cmake\CopySharedLibs.cmake;E:\CPP\v3\cmake\FindPybind11.cmake;E:\CPP\v3\third_party\pybind11\CMakeLists.txt;E:\CPP\v3\third_party\pybind11\tools\JoinPaths.cmake;E:\CPP\v3\third_party\pybind11\tools\pybind11Common.cmake;E:\CPP\v3\third_party\pybind11\tools\pybind11NewTools.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCXXCompiler.cmake.in;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCXXCompilerABI.cpp;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCXXInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCheckCompilerFlagCommonPatterns.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCommonLanguageInclude.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCompilerIdDetection.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDependentOption.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCXXCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompilerABI.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompilerId.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompilerSupport.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineRCCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineSystem.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeFindBinUtils.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeGenericSystem.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeInitializeConfigs.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeLanguageInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakePackageConfigHelpers.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeParseImplicitIncludeInfo.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeParseImplicitLinkInfo.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeParseLibraryArchitecture.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeRCCompiler.cmake.in;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeRCInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeSystem.cmake.in;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeSystemSpecificInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeSystemSpecificInitialize.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeTestCXXCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeTestCompilerCommon.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeTestRCCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CheckCXXCompilerFlag.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CheckCXXSourceCompiles.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\ADSP-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\ARMCC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\ARMClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\AppleClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Borland-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\CMakeCommonCompilerMacros.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Clang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Cray-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\CrayClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\FujitsuClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\GHS-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IAR-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IBMClang-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Intel-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IntelLLVM-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\LCC-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\MSVC-CXX.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\MSVC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\MSVC.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\NVHPC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\OrangeC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\PGI-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\PathScale-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\SCO-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\TI-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\TIClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Tasking-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Watcom-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CompilerId\VS-10.vcxproj.in;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPackageHandleStandardArgs.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPackageMessage.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPython.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPython\Support.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\GNUInstallDirs.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CMakeDetermineLinkerId.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CheckCompilerFlag.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CheckFlagCommonConfig.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CheckSourceCompiles.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\FeatureTesting.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-Determine-CXX.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-Initialize.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-MSVC-CXX.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-MSVC.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\WindowsPaths.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\WriteBasicConfigVersionFile.cmake;E:\CPP\v3\build\CMakeFiles\cmake.verify_globs;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">E:\CPP\v3\build\CMakeFiles\generate.stamp;E:\CPP\v3\build\third_party\pybind11\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Checking Build System</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
+E:\Programs\msys2\mingw64\bin\cmake.exe -SE:/CPP/v3 -BE:/CPP/v3/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file E:/CPP/v3/build/CppBacktester.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">E:\CPP\v3\CMakeLists.txt;E:\CPP\v3\build\CMakeFiles\3.30.2\CMakeCXXCompiler.cmake;E:\CPP\v3\build\CMakeFiles\3.30.2\CMakeRCCompiler.cmake;E:\CPP\v3\build\CMakeFiles\3.30.2\CMakeSystem.cmake;E:\CPP\v3\cmake\CopySharedLibs.cmake;E:\CPP\v3\cmake\FindPybind11.cmake;E:\CPP\v3\third_party\pybind11\CMakeLists.txt;E:\CPP\v3\third_party\pybind11\tools\JoinPaths.cmake;E:\CPP\v3\third_party\pybind11\tools\pybind11Common.cmake;E:\CPP\v3\third_party\pybind11\tools\pybind11NewTools.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCXXCompiler.cmake.in;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCXXCompilerABI.cpp;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCXXInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCheckCompilerFlagCommonPatterns.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCommonLanguageInclude.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeCompilerIdDetection.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDependentOption.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCXXCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompilerABI.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompilerId.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineCompilerSupport.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineRCCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeDetermineSystem.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeFindBinUtils.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeGenericSystem.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeInitializeConfigs.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeLanguageInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakePackageConfigHelpers.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeParseImplicitIncludeInfo.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeParseImplicitLinkInfo.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeParseLibraryArchitecture.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeRCCompiler.cmake.in;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeRCInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeSystem.cmake.in;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeSystemSpecificInformation.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeSystemSpecificInitialize.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeTestCXXCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeTestCompilerCommon.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CMakeTestRCCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CheckCXXCompilerFlag.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CheckCXXSourceCompiles.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\ADSP-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\ARMCC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\ARMClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\AppleClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Borland-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\CMakeCommonCompilerMacros.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Clang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Clang-DetermineCompilerInternal.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Compaq-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Cray-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\CrayClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Embarcadero-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Fujitsu-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\FujitsuClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\GHS-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\GNU-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\HP-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IAR-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IBMCPP-CXX-DetermineVersionInternal.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IBMClang-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Intel-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\IntelLLVM-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\LCC-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\MSVC-CXX.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\MSVC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\MSVC.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\NVHPC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\NVIDIA-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\OpenWatcom-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\OrangeC-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\PGI-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\PathScale-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\SCO-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\SunPro-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\TI-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\TIClang-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Tasking-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\VisualAge-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\Watcom-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\XL-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\XLClang-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Compiler\zOS-CXX-DetermineCompiler.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\CompilerId\VS-10.vcxproj.in;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPackageHandleStandardArgs.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPackageMessage.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPython.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\FindPython\Support.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\GNUInstallDirs.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CMakeDetermineLinkerId.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CheckCompilerFlag.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CheckFlagCommonConfig.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\CheckSourceCompiles.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Internal\FeatureTesting.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-Determine-CXX.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-Initialize.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-MSVC-CXX.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows-MSVC.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\Windows.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\Platform\WindowsPaths.cmake;E:\Programs\msys2\mingw64\share\cmake\Modules\WriteBasicConfigVersionFile.cmake;E:\CPP\v3\build\CMakeFiles\cmake.verify_globs;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">E:\CPP\v3\build\CMakeFiles\generate.stamp;E:\CPP\v3\build\third_party\pybind11\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
