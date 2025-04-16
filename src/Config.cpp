@@ -21,8 +21,8 @@ void Config::setDefaultValues() {
         {"Data", {
             {"SourceType", "CSV"}, // Added: Type of source (CSV, WebSocket, Database etc.) - For future use
             {"INPUT_CSV_PATH", "E:/UMHack/btc_market_data.csv"},
-            {"USE_PARTIAL_DATA", true},
-            {"PARTIAL_DATA_PERCENT", 20.0},
+            {"USE_PARTIAL_DATA", false},
+            {"PARTIAL_DATA_PERCENT", 100.0},
 
             {"CSV_Timestamp_Col", 0},        // Column index (0-based) or Name (if header exists)
             {"CSV_Timestamp_Format", "%Y-%m-%d %H:%M:%S"}, // strptime/get_time format + "%f" for custom ms handling
@@ -35,7 +35,7 @@ void Config::setDefaultValues() {
             {"CSV_Has_Header", true}
         }},
         {"Broker", {
-            {"STARTING_CASH", 1000.0},
+            {"STARTING_CASH", 100000.0},
             {"LEVERAGE", 100.0},
             {"COMMISSION_RATE", 0.06}
         }},
@@ -54,6 +54,7 @@ void Config::setDefaultValues() {
             
             {"BANKRUPTCY_PROTECTION", true},
             {"FORCE_EXIT_PERCENT", -50.0},
+            {"ONE_TRADE", true},
         }}
     };
 }

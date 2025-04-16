@@ -31,7 +31,7 @@ void RandomStrategy::init() {
         entryProbability = config->getNested<double>("/Strategy/ENTRY_PROBABILITY", 0.01);
         benchmarkFixedSize = config->getNested<double>("/Strategy/BENCHMARK_FIXED_SIZE", 1.0);
         debugMode = config->getNested<bool>("/Strategy/DEBUG_MODE", false);
-        one_trade = config->getNested<bool>("/Strategy/ONE_TRADE", false);
+        one_trade = config->getNested<bool>("/Strategy/ONE_TRADE", true);
     } catch (const std::exception& e) {
         Utils::logMessage("RandomStrategy::init Warning: Error loading parameters: " + std::string(e.what()));
         // Use defaults already set in class definition
@@ -44,6 +44,7 @@ void RandomStrategy::init() {
     // --- Set up State ---
     currentOrderId = -1;
     inPosition = false;
+    taken_trade = false;
     double startingAccountValue = broker->getStartingCash();
 
     // Convert entry probability from percentage to decimal if needed
@@ -69,96 +70,102 @@ void RandomStrategy::init() {
 // --- Per-Bar Logic ---
 void RandomStrategy::next(const Bar& , size_t currentBarIndex, const std::map<std::string, double>& currentPrices) {
     // Log position status every 500 bars for debugging
-    if (currentBarIndex % 500 == 0 || currentBarIndex < 10) {
-        Utils::logMessage("Bar " + std::to_string(currentBarIndex) + ": inPosition=" + std::to_string(inPosition) + ", ONE_TRADE=" + std::to_string(one_trade));
-    }
-
+    // if (currentBarIndex % 500 == 0 || currentBarIndex < 10) {
+    //     Utils::logMessage("Bar " + std::to_string(currentBarIndex) + ": inPosition=" + std::to_string(inPosition) + ", ONE_TRADE=" + std::to_string(one_trade));
+    // }
     // --- Exit Logic (For positions) ---
-    if (inPosition || one_trade) {
+    if (inPosition) {
+        if(currentBarIndex == 0)Utils::logMessage(
+            "inPosition:" + std::to_string(inPosition)
+             + ", taken=" + std::to_string(taken_trade));
         return;
     }
+    if (one_trade && taken_trade) {
+        return;
+    }
+    
     // --- Entry Logic ---
-    else {
-        double roll = probDist(rng);
-        // Log roll value every 100 bars for debugging
-        if (currentBarIndex % 100 == 0) {
-            Utils::logMessage("Bar " + std::to_string(currentBarIndex) + ": Roll=" + std::to_string(roll) + ", EntryProbability=" + std::to_string(entryProbability));
+    double roll = probDist(rng);
+    // Log roll value every 100 bars for debugging
+    if (currentBarIndex % 100 == 0) {
+        Utils::logMessage("Bar " + std::to_string(currentBarIndex) + ": Roll=" + std::to_string(roll) + ", EntryProbability=" + std::to_string(entryProbability));
+    }
+    if (roll < entryProbability) {
+        // Random direction (BUY or SELL)
+        OrderType entryOrderType = (directionDist(rng) == 0) ? OrderType::BUY : OrderType::SELL;
+        double desiredSize = benchmarkFixedSize;
+        if(entryOrderType == OrderType::SELL) {
+            desiredSize = -desiredSize;
         }
-        if (roll < entryProbability) {
-            // Random direction (BUY or SELL)
-            OrderType entryOrderType = (directionDist(rng) == 0) ? OrderType::BUY : OrderType::SELL;
-            double desiredSize = benchmarkFixedSize;
-            if(entryOrderType == OrderType::SELL) {
-                desiredSize = -desiredSize;
+
+        if (debugMode) Utils::logMessage("DEBUG: Random Entry Triggered (Roll: " + std::to_string(roll) + ")");
+
+        // --- Create Order ---
+        Order entryOrder;
+        entryOrder.type = entryOrderType;
+        entryOrder.symbol = dataName;
+        entryOrder.reason = OrderReason::ENTRY_SIGNAL;
+
+        entryOrder.requestedSize = desiredSize;
+        entryOrder.requestedPrice = currentPrices.at(dataName);
+
+        // For BUY (LONG): TP above entry, SL below entry
+        // For SELL (SHORT): TP below entry, SL above entry
+        double tpPips = config->getNested<double>("/Strategy/TAKE_PROFIT_PIPS", 30.0);
+        double slPips = config->getNested<double>("/Strategy/STOP_LOSS_PIPS", 30.0);
+
+        // Log the raw values for debugging
+        Utils::logMessage("DEBUG: TP Pips = " + std::to_string(tpPips) + ", SL Pips = " + std::to_string(slPips));
+        Utils::logMessage("DEBUG: Requested Entry Price = " + std::to_string(entryOrder.requestedPrice));
+
+        if (entryOrderType == OrderType::BUY) {
+            // Long position
+            entryOrder.takeProfit = entryOrder.requestedPrice + tpPips;
+            entryOrder.stopLoss = entryOrder.requestedPrice - slPips;
+
+            // Ensure TP is above entry and SL is below entry for long positions
+            if (entryOrder.stopLoss >= entryOrder.requestedPrice) {
+                Utils::logMessage("WARNING: Correcting invalid SL for long position. SL must be below entry price.");
+                entryOrder.stopLoss = entryOrder.requestedPrice - std::abs(slPips);
             }
-
-            if (debugMode) Utils::logMessage("DEBUG: Random Entry Triggered (Roll: " + std::to_string(roll) + ")");
-
-            // --- Create Order ---
-            Order entryOrder;
-            entryOrder.type = entryOrderType;
-            entryOrder.symbol = dataName;
-            entryOrder.reason = OrderReason::ENTRY_SIGNAL;
-
-            entryOrder.requestedSize = desiredSize;
-            entryOrder.requestedPrice = currentPrices.at(dataName);
-
-            // For BUY (LONG): TP above entry, SL below entry
-            // For SELL (SHORT): TP below entry, SL above entry
-            double tpPips = config->getNested<double>("/Strategy/TAKE_PROFIT_PIPS", 30.0);
-            double slPips = config->getNested<double>("/Strategy/STOP_LOSS_PIPS", 30.0);
-
-            // Log the raw values for debugging
-            Utils::logMessage("DEBUG: TP Pips = " + std::to_string(tpPips) + ", SL Pips = " + std::to_string(slPips));
-            Utils::logMessage("DEBUG: Requested Entry Price = " + std::to_string(entryOrder.requestedPrice));
-
-            if (entryOrderType == OrderType::BUY) {
-                // Long position
-                entryOrder.takeProfit = entryOrder.requestedPrice + tpPips;
-                entryOrder.stopLoss = entryOrder.requestedPrice - slPips;
-
-                // Ensure TP is above entry and SL is below entry for long positions
-                if (entryOrder.stopLoss >= entryOrder.requestedPrice) {
-                    Utils::logMessage("WARNING: Correcting invalid SL for long position. SL must be below entry price.");
-                    entryOrder.stopLoss = entryOrder.requestedPrice - std::abs(slPips);
-                }
-                if (entryOrder.takeProfit <= entryOrder.requestedPrice) {
-                    Utils::logMessage("WARNING: Correcting invalid TP for long position. TP must be above entry price.");
-                    entryOrder.takeProfit = entryOrder.requestedPrice + std::abs(tpPips);
-                }
-            } else {
-                // Short position
-                entryOrder.takeProfit = entryOrder.requestedPrice - tpPips;
-                entryOrder.stopLoss = entryOrder.requestedPrice + slPips;
-
-                // Ensure TP is below entry and SL is above entry for short positions
-                if (entryOrder.stopLoss <= entryOrder.requestedPrice) {
-                    Utils::logMessage("WARNING: Correcting invalid SL for short position. SL must be above entry price.");
-                    entryOrder.stopLoss = entryOrder.requestedPrice + std::abs(slPips);
-                }
-                if (entryOrder.takeProfit >= entryOrder.requestedPrice) {
-                    Utils::logMessage("WARNING: Correcting invalid TP for short position. TP must be below entry price.");
-                    entryOrder.takeProfit = entryOrder.requestedPrice - std::abs(tpPips);
-                }
+            if (entryOrder.takeProfit <= entryOrder.requestedPrice) {
+                Utils::logMessage("WARNING: Correcting invalid TP for long position. TP must be above entry price.");
+                entryOrder.takeProfit = entryOrder.requestedPrice + std::abs(tpPips);
             }
+        } else {
+            // Short position
+            entryOrder.takeProfit = entryOrder.requestedPrice - tpPips;
+            entryOrder.stopLoss = entryOrder.requestedPrice + slPips;
 
-            // Log the TP/SL values for debugging
-            if (debugMode) {
-                Utils::logMessage("DEBUG: Setting " + std::string(entryOrderType == OrderType::BUY ? "LONG" : "SHORT") +
-                                " order TP: " + std::to_string(entryOrder.takeProfit) +
-                                ", SL: " + std::to_string(entryOrder.stopLoss));
+            // Ensure TP is below entry and SL is above entry for short positions
+            if (entryOrder.stopLoss <= entryOrder.requestedPrice) {
+                Utils::logMessage("WARNING: Correcting invalid SL for short position. SL must be above entry price.");
+                entryOrder.stopLoss = entryOrder.requestedPrice + std::abs(slPips);
             }
-
-            // entryOrder.takeProfit = config->getNested<double>("/Strategy/TAKE_PROFIT_PIPS", 30.0);
-            // entryOrder.stopLoss = config->getNested<double>("/Strategy/STOP_LOSS_PIPS", 30.0);
-
-            currentOrderId = broker->submitOrder(entryOrder);
-
-            if (currentOrderId == -1) {
-                Utils::logMessage("ERROR: Failed to submit entry order!");
+            if (entryOrder.takeProfit >= entryOrder.requestedPrice) {
+                Utils::logMessage("WARNING: Correcting invalid TP for short position. TP must be below entry price.");
+                entryOrder.takeProfit = entryOrder.requestedPrice - std::abs(tpPips);
             }
-            return;
         }
+
+        // Log the TP/SL values for debugging
+        if (debugMode) {
+            Utils::logMessage("DEBUG: Setting " + std::string(entryOrderType == OrderType::BUY ? "LONG" : "SHORT") +
+                            " order TP: " + std::to_string(entryOrder.takeProfit) +
+                            ", SL: " + std::to_string(entryOrder.stopLoss));
+        }
+
+        // entryOrder.takeProfit = config->getNested<double>("/Strategy/TAKE_PROFIT_PIPS", 30.0);
+        // entryOrder.stopLoss = config->getNested<double>("/Strategy/STOP_LOSS_PIPS", 30.0);
+
+        currentOrderId = broker->submitOrder(entryOrder);
+
+        if (currentOrderId == -1) {
+            Utils::logMessage("ERROR: Failed to submit entry order!");
+        } else if (one_trade) {
+            taken_trade = true;
+        }
+        return;
     }
 
     // Track portfolio value for metrics (every 10 bars to reduce overhead)

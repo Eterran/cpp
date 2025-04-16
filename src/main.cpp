@@ -6,7 +6,9 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include <limits> // Add this for std::numeric_limits
+#include <limits>
+#include "ModelInterface.cpp"
+#include "../include/OnnxModelInterface.h"
 
 // Helper function to wait for user input before exiting
 void waitForKeypress() {
@@ -35,7 +37,7 @@ int main() {
         }
 
         // Example: Override a value after loading (e.g., from command line later)
-        // config.set<bool>("/Strategy/DEBUG_MODE"_json_pointer, true); // Using json_pointer syntax
+        // config.set<bool>("/Strategy/DEBUG_MODE"_json_pointer, true);
 
         // 2. Create Backtest Engine (Pass the loaded config)
         std::unique_ptr<BacktestEngine> engine;
@@ -57,6 +59,15 @@ int main() {
             waitForKeypress();
             return 1;
         }
+
+        // 3.5 See if ONNX runtime is setup correctly
+        #ifdef _WIN32
+        const wchar_t* modelPath = L"path/to/your/model.onnx";
+        #else
+        const char* modelPath = "path/to/your/model.onnx";
+        #endif
+        std::unique_ptr<ModelInterface> model = ModelInterface::CreateModel(modelPath);
+        model->PrintModelInfo();
 
         // 4. Create and Set Strategy
         //    (Engine passes its config pointer to the strategy during setup)

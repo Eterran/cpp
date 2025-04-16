@@ -15,10 +15,10 @@ Broker::Broker(double initialCash, double lev, double commRate) :
     leverage(lev > 0 ? lev : 1.0),
     commissionRate(commRate),
     nextOrderId(1),
-    strategy(nullptr),
-    rng(static_cast<unsigned int>(
-        std::chrono::system_clock::now().time_since_epoch().count())
-    )
+    strategy(nullptr)
+    // rng(static_cast<unsigned int>(
+    //     std::chrono::system_clock::now().time_since_epoch().count())
+    // )
     // slippageDist(0.000, 0.000) // DISABLE slippage
 {
     if (initialCash <= 0) {
@@ -37,10 +37,10 @@ Broker::Broker() :
     leverage(1.0),
     commissionRate(0.0),
     nextOrderId(1),
-    strategy(nullptr),
-    rng(static_cast<unsigned int>(
-        std::chrono::system_clock::now().time_since_epoch().count())
-    )
+    strategy(nullptr)
+    // rng(static_cast<unsigned int>(
+    //     std::chrono::system_clock::now().time_since_epoch().count())
+    // )
     // slippageDist(-0.002, 0.002) // ±0.2% slippage
 {
     Utils::logMessage("Broker initialized with default values. Start Cash: 10000, Leverage: 1.0, Commission: 0.0");
