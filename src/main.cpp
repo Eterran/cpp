@@ -10,6 +10,7 @@
 #include "ModelInterface.cpp"
 #include "../include/OnnxModelInterface.h"
 
+#ifndef PYTHON_BINDINGS
 // Helper function to wait for user input before exiting
 void waitForKeypress() {
     Utils::logMessage("Program finished - waiting for user input before closing");
@@ -36,7 +37,7 @@ int main() {
             std::cout << "Configuration loaded successfully from " << configFilename << std::endl;
         }
 
-        // Example: Override a value after loading (e.g., from command line later)
+        // Override a value after loading (e.g., from command line later)
         // config.set<bool>("/Strategy/DEBUG_MODE"_json_pointer, true);
 
         // 2. Create Backtest Engine (Pass the loaded config)
@@ -61,13 +62,8 @@ int main() {
         }
 
         // 3.5 See if ONNX runtime is setup correctly
-        #ifdef _WIN32
-        const wchar_t* modelPath = L"path/to/your/model.onnx";
-        #else
-        const char* modelPath = "path/to/your/model.onnx";
-        #endif
-        std::unique_ptr<ModelInterface> model = ModelInterface::CreateModel(modelPath);
-        model->PrintModelInfo();
+        // OnnxModelInterface model = OnnxModelInterface();
+        // model.PrintModelInfo();
 
         // 4. Create and Set Strategy
         //    (Engine passes its config pointer to the strategy during setup)
@@ -100,3 +96,4 @@ int main() {
     waitForKeypress();
     return 0;
 }
+#endif

@@ -73,6 +73,7 @@ void RandomStrategy::next(const Bar& , size_t currentBarIndex, const std::map<st
     // if (currentBarIndex % 500 == 0 || currentBarIndex < 10) {
     //     Utils::logMessage("Bar " + std::to_string(currentBarIndex) + ": inPosition=" + std::to_string(inPosition) + ", ONE_TRADE=" + std::to_string(one_trade));
     // }
+
     // --- Exit Logic (For positions) ---
     if (inPosition) {
         if(currentBarIndex == 0)Utils::logMessage(

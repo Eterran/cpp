@@ -18,7 +18,11 @@ struct Bar {
     double ask = 0.0;
     long long volume = 0;
 
-    std::vector<std::variant<double, int, long long>> extraColumns;
+    double priceChange() const {
+        return getClose() - open;
+    }
+
+    std::vector<std::variant<double, int, long long, std::string>> extraColumns;
 
     double getOpen() const {
         if(open != 0.0) {

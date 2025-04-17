@@ -6,6 +6,7 @@
 #include <iomanip>     // For std::setw in saving JSON
 #include <stdexcept>
 #include <cstdint> 
+#include "ColumnSpec.h"
 
 using json = nlohmann::json;
 
@@ -23,6 +24,8 @@ void Config::setDefaultValues() {
             {"INPUT_CSV_PATH", "E:/UMHack/btc_market_data.csv"},
             {"USE_PARTIAL_DATA", false},
             {"PARTIAL_DATA_PERCENT", 100.0},
+            {"USE_PARTIAL_DATA", false},
+            {"PARTIAL_DATA_PERCENT", 100.0},
 
             {"CSV_Timestamp_Col", 0},        // Column index (0-based) or Name (if header exists)
             {"CSV_Timestamp_Format", "%Y-%m-%d %H:%M:%S"}, // strptime/get_time format + "%f" for custom ms handling
@@ -32,9 +35,15 @@ void Config::setDefaultValues() {
             // {"CSV_High_Col", -1},
             // {"CSV_Close_Col", -1},
             {"CSV_Delimiter", ","},
-            {"CSV_Has_Header", true}
+            {"CSV_Has_Header", true},
+            {"CSV_Columns", {
+                {{"name", "timestamp"}, {"type", "Timestamp"}, {"index", 0}},
+                {{"name", "close"},     {"type", "Close"},     {"index", 1}}
+            }},
+            {"API_Columns", json::array()}
         }},
         {"Broker", {
+            {"STARTING_CASH", 100000.0},
             {"STARTING_CASH", 100000.0},
             {"LEVERAGE", 100.0},
             {"COMMISSION_RATE", 0.06}
@@ -216,6 +225,34 @@ bool Config::has(const std::string& key) const {
     // } catch (...) { return false; }
 }
 
+std::vector<ColumnSpec> Config::getColumnSpecs(const std::string& keyPath) const {
+    std::vector<ColumnSpec> specs;
+    try {
+        nlohmann::json::json_pointer ptr(keyPath);
+        if (!configData.contains(ptr) || !configData.at(ptr).is_array())
+            return specs;
+        for (auto& item : configData.at(ptr)) {
+            if (!item.is_object()) continue;
+            ColumnSpec spec;
+            spec.name = item.value("name", std::string());
+            std::string typeStr = item.value("type", std::string());
+            spec.index = item.value("index", -1);
+            if (typeStr == "Timestamp") spec.type = ColumnType::Timestamp;
+            else if (typeStr == "Open")      spec.type = ColumnType::Open;
+            else if (typeStr == "High")      spec.type = ColumnType::High;
+            else if (typeStr == "Low")       spec.type = ColumnType::Low;
+            else if (typeStr == "Close")     spec.type = ColumnType::Close;
+            else if (typeStr == "Bid")       spec.type = ColumnType::Bid;
+            else if (typeStr == "Ask")       spec.type = ColumnType::Ask;
+            else if (typeStr == "Volume")    spec.type = ColumnType::Volume;
+            else                                 spec.type = ColumnType::Extra;
+            specs.push_back(spec);
+        }
+    } catch (...) {
+        // ignore and return empty
+    }
+    return specs;
+}
 
 // --- Explicit Template Instantiations ---
 template std::string Config::get<std::string>(const std::string& key, const std::string& defaultValue) const;

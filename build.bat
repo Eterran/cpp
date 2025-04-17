@@ -46,7 +46,7 @@ if %errorlevel% neq 0 (
 )
 
 :: --- Build project ---
-cmake --build . --config %BUILD_CONFIG%
+cmake --build . --config %BUILD_CONFIG% --verbose
 if %errorlevel% neq 0 (
     echo ERROR: Build failed.
     cd ..

@@ -7,6 +7,7 @@
 #include <vector>
 #include <cstdint>
 #include "json.hpp"
+#include "ColumnSpec.h"
 
 class Config {
 private:
@@ -29,6 +30,8 @@ public:
     T getNested(const std::string& keyPath, const T& defaultValue) const;
 
     std::string getString(const std::string& key, const std::string& defaultValue = "") const;
+
+    std::vector<ColumnSpec> getColumnSpecs(const std::string& keyPath) const;
 
     // --- Setter ---
     template <typename T>
