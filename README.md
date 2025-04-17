@@ -24,6 +24,8 @@ A C++ backtesting framework with Python bindings using pybind11 and ONNX Runtime
 - Python with development headers (if building Python module)
 - pybind11 (included in third_party)
 - ONNX Runtime (automatically downloaded if not found)
+- vcpkg (to install curl with openssl)
+  vcpkg install curl[core,ssl] --triplet x64-windows-static 
 
 ### Build Options
 

@@ -1,5 +1,0 @@
-E:/CPP/v3/build/CMakeFiles/backtest_executable.dir
-E:/CPP/v3/build/CMakeFiles/cppbacktester_py.dir
-E:/CPP/v3/build/CMakeFiles/ALL_BUILD.dir
-E:/CPP/v3/build/CMakeFiles/ZERO_CHECK.dir
-E:/CPP/v3/build/third_party/pybind11/CMakeFiles/ALL_BUILD.dir

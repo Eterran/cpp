@@ -37,7 +37,7 @@ int main() {
             std::cout << "Configuration loaded successfully from " << configFilename << std::endl;
         }
 
-        // Example: Override a value after loading (e.g., from command line later)
+        // Override a value after loading (e.g., from command line later)
         // config.set<bool>("/Strategy/DEBUG_MODE"_json_pointer, true);
 
         // 2. Create Backtest Engine (Pass the loaded config)

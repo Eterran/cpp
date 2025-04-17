@@ -7,6 +7,24 @@ project(CppBacktester VERSION 1.0 LANGUAGES CXX)
 # Add cmake modules directory
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+# --------------------------------------------------------
+# Disable optional curl features for a minimal staticbuild:
+# --------------------------------------------------------
+set(BUILD_CURL_EXE       OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING        OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS    OFF CACHE BOOL "" FORCE)
+
+set(CURL_ZLIB            OFF CACHE STRING "" FORCE)
+set(CURL_BROTLI          OFF CACHE STRING "" FORCE)
+set(CURL_ZSTD            OFF CACHE STRING "" FORCE)
+set(USE_NGHTTP2          OFF CACHE BOOL ""   FORCE)
+set(USE_LIBIDN2          OFF CACHE BOOL ""   FORCE)
+set(CURL_USE_LIBPSL      OFF CACHE BOOL ""   FORCE)
+
+# use vcpkg
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/third_party/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+find_package(CURL REQUIRED)
+
 # --- Configuration ---
 # Set the C++ standard to C++17
 set(CMAKE_CXX_STANDARD 17)
@@ -113,8 +131,6 @@ message(STATUS "Found ONNX Runtime Library: ${ONNXRUNTIME_LIBRARY}")
 # Include shared library copy module
 include(CopySharedLibs)
 
-
-
 # --- Source Files ---
 # Define core library files used by both targets
 file(GLOB CORE_SOURCE_FILES CONFIGURE_DEPENDS
@@ -166,7 +182,7 @@ if(BUILD_EXECUTABLE)
     )
 
     # Link libraries
-    target_link_libraries(${EXECUTABLE_NAME} PRIVATE ${ONNXRUNTIME_LIBRARY})
+    target_link_libraries(${EXECUTABLE_NAME} PRIVATE ${ONNXRUNTIME_LIBRARY} CURL::libcurl)
 
     # Set compiler options
     target_compile_options(${EXECUTABLE_NAME} PRIVATE
@@ -207,7 +223,6 @@ if(BUILD_PYTHON_MODULE)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/bindings.cpp
         ${CORE_SOURCE_FILES}
     )
-    message("==================================================================================${MODULE_NAME} ${PYTHON_BINDINGS_SRC} ${CORE_SOURCE_FILES}")
 
     # Print information about the module
     message(STATUS "Python module name: ${MODULE_NAME}")
@@ -224,7 +239,8 @@ if(BUILD_PYTHON_MODULE)
     # Link libraries
     target_link_libraries(${MODULE_NAME} PRIVATE
         ${ONNXRUNTIME_LIBRARY}
-        ${Python_LIBRARIES}     # Explicitly link against Python libraries
+        ${Python_LIBRARIES}
+        CURL::libcurl
     )
 
     # Set compiler options

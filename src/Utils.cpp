@@ -66,9 +66,6 @@ namespace Utils {
 
         // Convert std::tm to time_point (Note: timegm is non-standard but common on Linux/macOS, _mkgmtime on Windows)
         // Using C++20 chrono features would simplify this significantly. Pre-C++20 is more complex.
-        // Let's use a portable approach involving mktime assuming local timezone initially,
-        // but ideally, the input should be UTC if possible. If data is known UTC, use timegm/_mkgmtime.
-        // Assuming data is in local time for this conversion for broader (though perhaps incorrect) compatibility:
         #ifdef _WIN32
             // For Windows, use _mktime64 to avoid 32-bit time_t limitations
             std::time_t time_c = _mktime64(&tm);
