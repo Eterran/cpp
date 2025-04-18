@@ -4,3 +4,6 @@
 [submodule "third_party/vcpkg"]
 	path = third_party/vcpkg
 	url = https://github.com/microsoft/vcpkg.git
+[submodule "third_party/xgboost"]
+	path = third_party/xgboost
+	url = https://github.com/dmlc/xgboost.git
