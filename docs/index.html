@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CppBacktester Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>CppBacktester</h1>
+        <p>A high-performance backtesting framework with C++ and Python interfaces</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html" class="active">Home</a></li>
+            <li><a href="installation.html">Installation</a></li>
+            <li><a href="usage.html">Usage Guide</a></li>
+            <li><a href="api.html">API Reference</a></li>
+            <li><a href="examples.html">Examples</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section class="container">
+            <h2>Project Overview</h2>
+            <p>
+                CppBacktester is a high-performance backtesting framework designed for financial strategy testing and optimization.
+                It provides both a native C++ interface for maximum performance and a Python interface for ease of use and integration
+                with the Python data science ecosystem.
+            </p>
+            
+            <div class="note">
+                <strong>Note:</strong> This project is built with C++17 and uses CMake as its build system. It integrates with
+                Python through pybind11 for creating Python bindings.
+            </div>
+        </section>
+
+        <section class="container">
+            <h2>Key Features</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>High Performance</h3>
+                    <p>Built with C++ for maximum speed and efficiency, allowing for rapid backtesting of complex strategies.</p>
+                </div>
+                <div class="card">
+                    <h3>Python Integration</h3>
+                    <p>Seamless Python bindings allow for easy integration with popular data science libraries like NumPy and pandas.</p>
+                </div>
+                <div class="card">
+                    <h3>Dual Interface</h3>
+                    <p>Use either the C++ API for performance-critical applications or the Python API for rapid development and analysis.</p>
+                </div>
+                <div class="card">
+                    <h3>ONNX Runtime Support</h3>
+                    <p>Integrated support for ONNX Runtime enables the use of machine learning models in your backtesting strategies.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="container">
+            <h2>Getting Started</h2>
+            <p>
+                To get started with CppBacktester, follow these steps:
+            </p>
+            <ol>
+                <li>Check the <a href="installation.html">Installation Guide</a> to set up the project</li>
+                <li>Explore the <a href="usage.html">Usage Guide</a> to learn how to use the framework</li>
+                <li>Review the <a href="examples.html">Examples</a> to see CppBacktester in action</li>
+            </ol>
+            <p>
+                <a href="installation.html" class="btn">Installation Guide</a>
+                <a href="examples.html" class="btn btn-secondary">View Examples</a>
+            </p>
+        </section>
+
+        <section class="container">
+            <h2>Build Options</h2>
+            <p>
+                CppBacktester supports two main build targets:
+            </p>
+            <ul>
+                <li><strong>C++ executable</strong> (<code>BUILD_EXECUTABLE=ON</code>)</li>
+                <li><strong>Python module</strong> (<code>BUILD_PYTHON_MODULE=ON</code>)</li>
+            </ul>
+            <p>
+                Both targets are enabled by default. See the <a href="installation.html">Installation Guide</a> for more details.
+            </p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2023 CppBacktester Project. All rights reserved.</p>
+    </footer>
+</body>
+</html>

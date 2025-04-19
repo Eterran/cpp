@@ -3,6 +3,8 @@
 #include "ModelInterface.h"
 #include <vector>
 #include "TradingMetrics.h"
+#include <map>
+#include <cmath>
 
 class HMMStrategy : public Strategy {
 protected:
@@ -16,6 +18,8 @@ protected:
     double entryPrice_;
     int currentRegime_;
     int n_components_;
+    std::vector<Bar> barHistory_;  // Store recent bars for sequence-based prediction
+    std::vector<Bar> allBarHistory_;  // Complete bar history for global predictions
 
     std::unique_ptr<TradingMetrics> metrics;
 public:
@@ -32,5 +36,10 @@ protected:
      * Hook for mapping a model prediction and price into trade orders.
      * Default implementation: if no position and pred > threshold, submit a BUY with TP/SL.
      */
-    virtual void handlePrediction(float prediction);
+    virtual void handlePrediction(int regime);
+    
+    /**
+     * Normalize features using z-score normalization (subtract mean, divide by std)
+     */
+    std::vector<std::vector<float>> normalizeFeatures(const std::vector<std::vector<float>>& features);
 };

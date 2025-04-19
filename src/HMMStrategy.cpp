@@ -1,80 +1,3 @@
-// #include "HMMModelInterface.h"
-// #include "HMMStrategy.h"
-// #include "Config.h"
-// #include "ModelInterface.h"
-// #include "Broker.h"
-// #include "Bar.h"
-// #include "Order.h"
-// #include "Utils.h"
-// #include <vector>
-// #include <string>
-// #include "XGBoostModelInterface.h"
-
-// #include <thread>
-// #include <chrono>
-
-// HMMStrategy::HMMStrategy() = default;
-
-// std::string HMMStrategy::getName() const {
-//     return "HMMStrategy";
-// }
-
-// void HMMStrategy::init() {
-//     entryThreshold_ = config->getNested<double>("/Strategy/EntryThreshold", 0.0);
-//     // stopLossPips_ = config->getNested<double>("/Strategy/StopLossPips", 50.0);
-//     // takeProfitPips_ = config->getNested<double>("/Strategy/TakeProfitPips", 50.0);
-//     pipValue_ = config->getNested<double>("/Strategy/PipValue", 1.0);
-//     n_components_ = config->getNested<int>("/RegimeDetection/params/n_components", 5);
-
-//     inPosition_ = false;
-//     currentRegime_ = -1;
-
-//     metrics = std::make_unique<TradingMetrics>(broker->getStartingCash());
-
-//     //inni for specialsied models per regime
-//     // for (int i = 0; i < n_components_; i++) {
-//     //     auto model = std::make_unique<XGBoostModelInterface>();
-//     //     regime_models_.push_back(std::move(model));
-//     //     #ifdef _WIN32
-//     //         std::wstring regimeModelPathW = Utils::UTF8ToWide("../../../xgb_saved/model_" + std::to_string(i) + ".json");
-//     //     #else
-//     //         std::string regimeModelPath = "../../../xgb_saved/model_" + std::to_string(i) + ".json";   
-//     //     #endif
-//     // }
-
-// }
-// // "1 2 3, 4 5 6, 7 8 9, 10 11 12"
-
-// void HMMStrategy::next(const Bar& currentBar, size_t /*currentBarIndex*/, const double /*currentPrices*/) {
-//     // Format the input as space-separated values in a single line
-//     // This will be reshaped to a 1xN matrix on the Python side
-//     std::string input = std::to_string(currentBar.columns[0]);
-    
-//     // Add the rest of the features
-//     for (int i = 1; i < 5; i++) {
-//         input += " " + std::to_string(currentBar.columns[i]);
-//     }
-
-//     Utils::logMessage("Sending features to HMM: " + input);
-//     int regime = HMMModelInterface::use(input);
-
-//     handlePrediction((float) regime);
-// }
-
-// void HMMStrategy::stop() {
-//     Utils::logMessage("HMMStrategy: Backtest finished.");
-// }
-
-// void HMMStrategy::notifyOrder(const Order& /*order*/) {
-//     // TODO: order notification handling
-// }
-
-// void HMMStrategy::handlePrediction(float prediction){
-//     Utils::logMessage("Current Regime:" + std::to_string(prediction));
-// }
-
-
-
 #include "HMMStrategy.h"
 #include "Config.h"
 #include "ModelInterface.h"
@@ -143,21 +66,133 @@ void HMMStrategy::init() {
     // std::this_thread::sleep_for(std::chrono::seconds(10));
 }
 
-void HMMStrategy::next(const Bar& currentBar, size_t /*currentBarIndex*/, const double /*currentPrices*/) {
-    // Prepare feature vector: using closing price and any extra features
-    std::vector<float> features;
-    features.push_back(static_cast<float>(currentBar.columns[0]));
-    std::vector<int64_t> shape = {1, static_cast<int64_t>(features.size())};
-
-    std::vector<float> reg_out;
-
-    reg_out = hmm_model_->Predict(features, shape);
-
-    if (!reg_out.empty()) {
-        currentRegime_ = static_cast<int>(reg_out[0]);
+void HMMStrategy::next(const Bar& currentBar, size_t currentBarIndex, const double /*currentPrices*/) {
+    // Store current bar in our global history
+    allBarHistory_.push_back(currentBar);
+    
+    // We need at least a reasonable number of bars to make a prediction
+    const size_t MIN_HISTORY = 30;
+    if (allBarHistory_.size() < MIN_HISTORY) {
+        Utils::logMessage("HMMStrategy: Not enough bars for prediction yet, have " + 
+                         std::to_string(allBarHistory_.size()) + ", need " + 
+                         std::to_string(MIN_HISTORY));
+        return;
     }
+    
+    // We'll now use a larger window size since that's what gives us good regime variability
+    // The window size needs to be large enough to capture the regime transitions
+    const size_t WINDOW_SIZE = 100;
+    size_t startIdx = allBarHistory_.size() <= WINDOW_SIZE ? 0 : allBarHistory_.size() - WINDOW_SIZE;
+    
+    // Extract features from relevant history with a larger window
+    std::vector<std::vector<float>> rawFeatures;
+    for (size_t i = startIdx; i < allBarHistory_.size(); i++) {
+        std::vector<float> features;
+        for (int j = 0; j < 4; j++) {
+            features.push_back(static_cast<float>(allBarHistory_[i].columns[j]));
+        }
+        rawFeatures.push_back(features);
+    }
+    
+    // Apply z-score normalization (subtract mean, divide by std dev)
+    auto normalizedFeatures = normalizeFeatures(rawFeatures);
+    
+    // Predict regimes for all samples in the window
+    std::vector<float> regimePredictions = hmm_model_->predict2D(normalizedFeatures);
+    
+    // Get my current regime (the last prediction)
+    if (!regimePredictions.empty()) {
+        currentRegime_ = static_cast<int>(regimePredictions.back());
+        
+        // Log the distribution of regimes in this window
+        std::map<int, int> regimeCounts;
+        for (float regime : regimePredictions) {
+            regimeCounts[static_cast<int>(regime)]++;
+        }
+        
+        std::string distribution = "Regime distribution: ";
+        for (const auto& [regime, count] : regimeCounts) {
+            distribution += "Regime " + std::to_string(regime) + ": " + 
+                           std::to_string(count) + " (" +
+                           std::to_string(static_cast<float>(count) / regimePredictions.size() * 100.0f) +
+                           "%), ";
+        }
+        Utils::logMessage(distribution);
+        
+        // Every N bars, log the full regime sequence for debugging
+        const int LOG_FULL_SEQUENCE_INTERVAL = 50;
+        if (currentBarIndex % LOG_FULL_SEQUENCE_INTERVAL == 0) {
+            std::string regimeSequence = "Full regime sequence: ";
+            for (size_t i = 0; i < std::min(regimePredictions.size(), static_cast<size_t>(20)); i++) {
+                regimeSequence += std::to_string(static_cast<int>(regimePredictions[i])) + " ";
+            }
+            if (regimePredictions.size() > 20) {
+                regimeSequence += "... ";
+                // Also show the last few predictions
+                for (size_t i = regimePredictions.size() - 5; i < regimePredictions.size(); i++) {
+                    regimeSequence += std::to_string(static_cast<int>(regimePredictions[i])) + " ";
+                }
+            }
+            Utils::logMessage(regimeSequence);
+        }
+        
+        handlePrediction(static_cast<float>(currentRegime_));
+    } else {
+        Utils::logMessage("Error: Empty prediction from HMM model");
+    }
+}
 
-    handlePrediction((float) currentRegime_);
+// Normalize features using z-score normalization (subtract mean, divide by std)
+std::vector<std::vector<float>> HMMStrategy::normalizeFeatures(const std::vector<std::vector<float>>& features) {
+    if (features.empty() || features[0].empty()) return features;
+    
+    const size_t numSamples = features.size();
+    const size_t numFeatures = features[0].size();
+    
+    // Calculate means for each feature
+    std::vector<float> means(numFeatures, 0.0f);
+    for (const auto& sample : features) {
+        for (size_t j = 0; j < numFeatures; j++) {
+            means[j] += sample[j];
+        }
+    }
+    for (size_t j = 0; j < numFeatures; j++) {
+        means[j] /= numSamples;
+    }
+    
+    // Calculate standard deviations for each feature
+    std::vector<float> stds(numFeatures, 0.0f);
+    for (const auto& sample : features) {
+        for (size_t j = 0; j < numFeatures; j++) {
+            float diff = sample[j] - means[j];
+            stds[j] += diff * diff;
+        }
+    }
+    for (size_t j = 0; j < numFeatures; j++) {
+        stds[j] = std::sqrt(stds[j] / numSamples);
+        // Avoid division by zero
+        if (stds[j] < 1e-6) stds[j] = 1.0f;
+    }
+    
+    // Log normalization parameters
+    // std::string meanStr = "Feature means: ";
+    // std::string stdStr = "Feature std devs: ";
+    // for (size_t j = 0; j < numFeatures; j++) {
+    //     meanStr += std::to_string(means[j]) + " ";
+    //     stdStr += std::to_string(stds[j]) + " ";
+    // }
+    // Utils::logMessage(meanStr);
+    // Utils::logMessage(stdStr);
+    
+    // Apply z-score normalization
+    std::vector<std::vector<float>> normalized(numSamples, std::vector<float>(numFeatures));
+    for (size_t i = 0; i < numSamples; i++) {
+        for (size_t j = 0; j < numFeatures; j++) {
+            normalized[i][j] = (features[i][j] - means[j]) / stds[j];
+        }
+    }
+    
+    return normalized;
 }
 
 void HMMStrategy::stop() {
@@ -168,121 +203,6 @@ void HMMStrategy::notifyOrder(const Order& /*order*/) {
     // TODO: order notification handling
 }
 
-void HMMStrategy::handlePrediction(float prediction){
+void HMMStrategy::handlePrediction(int regime){
     Utils::logMessage("Current Regime:" + std::to_string(prediction));
 }
-
-// // MLStrategy::MLStrategy()
-// //     : inPosition_(false), entryPrice_(0.0), currentRegime_(-1) {}
-
-// // void MLStrategy::init() {
-// //     // Load strategy parameters from config
-// //     entryThreshold_ = config->getNested<double>("/Strategy/EntryThreshold", 0.0);
-// //     stopLossPips_ = config->getNested<double>("/Strategy/StopLossPips", 50.0);
-// //     takeProfitPips_ = config->getNested<double>("/Strategy/TakeProfitPips", 50.0);
-// //     // pip value based on symbol (stubbed as 1.0)
-// //     pipValue_ = 1.0;
-
-// //     // Load HMM ONNX model
-// //     std::string hmmPath = config->getNested<std::string>("/Strategy/HMMOnnxPath", "");
-// //     hmm_model_ = std::make_unique<OnnxModelInterface>();
-// // #ifdef _WIN32
-// //     {
-// //         std::wstring hmmPathW(hmmPath.begin(), hmmPath.end());
-// //         if (!hmm_model_->LoadModel(hmmPathW.c_str())) {
-// //             Utils::logMessage("MLStrategy Error: Failed to load HMM model from " + hmmPath);
-// //         }
-// //     }
-// // #else
-// //     if (!hmm_model_->LoadModel(hmmPath.c_str())) {
-// //         Utils::logMessage("MLStrategy Error: Failed to load HMM model from " + hmmPath);
-// //     }
-// // #endif
-
-// //     // Load per-regime models
-// //     // Expect a JSON object mapping regime to model path
-// //     auto rm = config->getNested<nlohmann::json>("/Strategy/RegimeModelOnnxPaths", nlohmann::json::object());
-// // //     for (auto& kv : rm.items()) {
-// // //         std::string path = kv.value();
-// // // #ifdef _WIN32
-// // //         std::wstring pathW(path.begin(), path.end());
-// // //         auto m = new ;
-// // // #else
-// // //         auto m = ModelInterface::CreateModel(path.c_str());
-// // // #endif
-// // //         if (m) regime_models_.push_back(std::move(m));
-// // //         else Utils::logMessage("MLStrategy Error: Failed to load model for regime " + kv.key());
-// // //     }
-// // }
-
-// // void MLStrategy::next(const Bar& /*currentBar*/, size_t /*currentBarIndex*/, const std::map<std::string, double>& currentPrices) {
-// //     // Build feature vector: use currentPrices values
-// //     std::vector<float> features;
-// //     for (auto& kv : currentPrices) features.push_back(static_cast<float>(kv.second));
-// //     std::vector<int64_t> shape = {1, static_cast<int64_t>(features.size())};
-
-// //     // Predict regime
-// //     auto reg_out = hmm_model_->Predict(features, shape);
-// //     if (!reg_out.empty()) currentRegime_ = static_cast<int>(reg_out[0]);
-    
-// //     // Predict value/signal
-// //     float pred = 0.0f;
-// //     if (currentRegime_ >= 0 && currentRegime_ < (int)regime_models_.size()) {
-// //         pred = regime_models_[currentRegime_]->Predict(features, shape)[0];
-// //     }
-
-// //     double price = currentPrices.at(dataName); // assume dataName symbol key
-    
-// //     if (!inPosition_) {
-// //         handlePrediction(pred, price);
-// //     }
-// // }
-
-// // void MLStrategy::stop() {
-// //     Utils::logMessage("MLStrategy: Backtest finished.");
-// // }
-
-// // void MLStrategy::notifyOrder(const Order& order) {
-// //     if (order.status == OrderStatus::FILLED) {
-// //         if (order.type == OrderType::BUY) {
-// //             inPosition_ = true;
-// //             entryPrice_ = order.filledPrice;
-// //         } else if (order.type == OrderType::SELL) {
-// //             inPosition_ = false;
-// //         }
-// //     }
-// // }
-
-// // // Default handlePrediction implementation
-// // void MLStrategy::handlePrediction(float prediction, double price) {
-// //     if (prediction > entryThreshold_) {
-// //         Order o;
-// //         o.symbol = dataName;
-// //         o.type = OrderType::BUY;
-// //         o.requestedSize = 1.0;
-// //         o.takeProfit = price + takeProfitPips_ * pipValue_;
-// //         o.stopLoss = price - stopLossPips_ * pipValue_;
-// //         broker->submitOrder(o);
-// //     }
-// // }
-
-// // // Example override
-// // void ExampleMLStrategy::handlePrediction(float prediction, double price) {
-// //     if (prediction > entryThreshold_) {
-// //         Order o;
-// //         o.symbol = dataName;
-// //         o.type = OrderType::BUY;
-// //         o.requestedSize = 1.0;
-// //         o.takeProfit = price + takeProfitPips_ * pipValue_;
-// //         o.stopLoss = price - stopLossPips_ * pipValue_;
-// //         broker->submitOrder(o);
-// //     } else if (prediction < -entryThreshold_) {
-// //         Order o;
-// //         o.symbol = dataName;
-// //         o.type = OrderType::SELL;
-// //         o.requestedSize = 1.0;
-// //         o.takeProfit = price - takeProfitPips_ * pipValue_;
-// //         o.stopLoss = price + stopLossPips_ * pipValue_;
-// //         broker->submitOrder(o);
-// //     }
-// // }

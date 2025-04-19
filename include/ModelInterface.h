@@ -22,6 +22,8 @@ public:
     // Run inference on input data and return predictions
     virtual std::vector<float> Predict(const std::vector<float>& inputData, 
                                       const std::vector<int64_t>& inputShape) = 0;
+
+    virtual std::vector<float> predict2D(const std::vector<std::vector<float>> inputData) = 0;
     
     // Print information about the model
     virtual void PrintModelInfo() = 0;

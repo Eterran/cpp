@@ -66,6 +66,10 @@ std::vector<float> XGBoostModelInterface::Predict(const std::vector<float>& inpu
     return predictions;
 }
 
+std::vector<float> XGBoostModelInterface::predict2D(const std::vector<std::vector<float>> inputData){
+    return {};
+}
+
 void XGBoostModelInterface::PrintModelInfo() {
     std::cout << "Loaded " << boosters_.size() << " XGBoost models" << std::endl;
 }

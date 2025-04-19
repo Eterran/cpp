@@ -78,6 +78,24 @@ std::vector<float> HMMModelInterface::Predict(const std::vector<float>& inputDat
                                                  const std::vector<int64_t>& inputShape) {
     // Acquire GIL for Python interaction
     pybind11::gil_scoped_acquire acquire;
+    
+    // Debug output
+    // std::cout << "[HMMModelInterface::Predict] Input shape: [";
+    // for (size_t i = 0; i < inputShape.size(); ++i) {
+    //     std::cout << inputShape[i];
+    //     if (i < inputShape.size() - 1) std::cout << ", ";
+    // }
+    // std::cout << "]" << std::endl;
+    
+    // std::cout << "[HMMModelInterface::Predict] Input data: ";
+    // for (size_t i = 0; i < std::min(inputData.size(), static_cast<size_t>(10)); ++i) {
+    //     std::cout << inputData[i] << " ";
+    // }
+    // if (inputData.size() > 10) {
+    //     std::cout << "... (showing first 10 elements only)";
+    // }
+    // std::cout << std::endl;
+    
     // Prepare numpy array: shape and strides
     std::vector<pybind11::ssize_t> shape_py;
     for (auto dim : inputShape) shape_py.push_back(static_cast<pybind11::ssize_t>(dim));
@@ -88,6 +106,7 @@ std::vector<float> HMMModelInterface::Predict(const std::vector<float>& inputDat
             strides_py[i] = strides_py[i + 1] * shape_py[i + 1];
         }
     }
+    
     // Create numpy array from inputData
     pybind11::array arr_in(
         pybind11::buffer_info(
@@ -97,23 +116,59 @@ std::vector<float> HMMModelInterface::Predict(const std::vector<float>& inputDat
             static_cast<ssize_t>(shape_py.size()), 
             shape_py, 
             strides_py
-    ));
+     ));
+    
     // Convert to float64 numpy array for HMM predict
     auto np = pybind11::module::import("numpy");
     auto arr_in64 = arr_in.attr("astype")(np.attr("float64"));
-    // Call Python model.predict
-    pybind11::object result_obj = model_.attr("predict")(arr_in64);
+    
+    // For HMM models, we may need to reshape the data if it's a single observation
+    bool reshaped = false;
+    pybind11::object arr_for_predict = arr_in64;
+    
+    try {
+        // Check if we need to reshape the data for HMM
+        if (shape_py.size() == 2 && shape_py[0] == 1) {
+            // If this is a single observation, we need to reshape to 2D for HMM scoring
+            std::cout << "[HMMModelInterface::Predict] Reshaping single observation for HMM" << std::endl;
+            arr_for_predict = arr_in64.attr("reshape")(-1, shape_py[1]);
+            reshaped = true;
+        }
 
-    // Cast result to numpy array of integers (assuming hmmlearn returns int states)
-    pybind11::array_t<int64_t> result_arr = pybind11::cast<pybind11::array_t<int64_t>>(result_obj);
+        // Call Python model.predict
+        // std::cout << "[HMMModelInterface::Predict] Calling model.predict()" << std::endl;
+        pybind11::object result_obj;
+        if (reshaped) {
+            // For reshaped data, we need to score it properly for HMM
+            result_obj = model_.attr("predict")(arr_for_predict);
+        } else {
+            // Use original data
+            result_obj = model_.attr("predict")(arr_in64);
+        }
+        
+        // Print the result type
+        // auto type_str = pybind11::str(result_obj.attr("__class__").attr("__name__")).cast<std::string>();
+        // std::cout << "[HMMModelInterface::Predict] Result type: " << type_str << std::endl;
+        
+        // Cast result to numpy array of integers (assuming hmmlearn returns int states)
+        pybind11::array_t<int64_t> result_arr = pybind11::cast<pybind11::array_t<int64_t>>(result_obj);
+        
+        // Print result shape and content
+        // auto result_shape = result_arr.attr("shape");
+        // std::cout << "[HMMModelInterface::Predict] Result shape: " << pybind11::str(result_shape).cast<std::string>() << std::endl;
+        // std::cout << "[HMMModelInterface::Predict] Result: " << pybind11::str(result_arr).cast<std::string>() << std::endl;
 
-    // Convert to vector<float>
-    std::vector<float> output;
-    output.reserve(result_arr.size());
-    for (pybind11::ssize_t i = 0; i < result_arr.size(); ++i) {
-        output.push_back(static_cast<float>(result_arr.at(i)));
+        // Convert to vector<float>
+        std::vector<float> output;
+        output.reserve(result_arr.size());
+        for (pybind11::ssize_t i = 0; i < result_arr.size(); ++i) {
+            output.push_back(static_cast<float>(result_arr.at(i)));
+        }
+        return output;
+    } catch (const std::exception &e) {
+        std::cerr << "[HMMModelInterface::Predict] Error during prediction: " << e.what() << std::endl;
+        return {2.0f}; // Return default regime to match current behavior for debugging
     }
-    return output;
 }
 
 // New overload: build flat + shape via FeatureMatrix
@@ -121,6 +176,18 @@ std::vector<float> HMMModelInterface::Predict(const std::vector<Bar>& bars) {
     FeatureMatrix fm(bars);
     auto flat = fm.flat();
     auto shape = fm.shape();
+    
+    // Debug output for flat vector
+    // std::cout << "[HMMModelInterface::Predict] Flat vector size: " << flat.size() << std::endl;
+    // std::cout << "[HMMModelInterface::Predict] Flat vector contents: ";
+    // for (size_t i = 0; i < std::min(flat.size(), static_cast<size_t>(10)); ++i) {
+    //     std::cout << flat[i] << " ";
+    // }
+    // if (flat.size() > 10) {
+    //     std::cout << "... (showing first 10 elements only)";
+    // }
+    // std::cout << std::endl;
+    
     return Predict(flat, shape);
 }
 

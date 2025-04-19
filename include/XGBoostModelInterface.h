@@ -15,5 +15,8 @@ public:
     bool LoadModel(const char_T* modelPath) override;
     std::vector<float> Predict(const std::vector<float>& inputData,
                                const std::vector<int64_t>& inputShape) override;
+    std::vector<float> predict2D(const std::vector<std::vector<float>> inputData) override;
     void PrintModelInfo() override;
+
+
 };

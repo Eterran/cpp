@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usage Guide - CppBacktester Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>CppBacktester</h1>
+        <p>Usage Guide</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="installation.html">Installation</a></li>
+            <li><a href="usage.html" class="active">Usage Guide</a></li>
+            <li><a href="api.html">API Reference</a></li>
+            <li><a href="examples.html">Examples</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section class="container">
+            <h2>Introduction</h2>
+            <p>
+                This guide explains how to use CppBacktester for backtesting trading strategies. CppBacktester provides
+                both a C++ API for maximum performance and a Python API for ease of use and integration with the Python
+                data science ecosystem.
+            </p>
+        </section>
+
+        <section class="container">
+            <h2>C++ Interface</h2>
+            
+            <h3>Basic Usage</h3>
+            <p>To use CppBacktester in a C++ application, include the main header file and create a backtester instance:</p>
+            <pre><code>#include "CppBacktester.h"
+
+int main() {
+    // Create a backtester instance
+    CppBacktester::Backtester backtester;
+    
+    // Configure the backtester
+    backtester.setStartDate("2020-01-01");
+    backtester.setEndDate("2020-12-31");
+    backtester.setInitialCapital(100000.0);
+    
+    // Load data
+    backtester.loadData("path/to/data.csv");
+    
+    // Define a strategy
+    auto strategy = std::make_shared<MyStrategy>();
+    backtester.setStrategy(strategy);
+    
+    // Run the backtest
+    auto results = backtester.run();
+    
+    // Analyze results
+    results.printSummary();
+    
+    return 0;
+}</code></pre>
+
+            <h3>Creating Custom Strategies</h3>
+            <p>To create a custom strategy, inherit from the <code>Strategy</code> base class and implement the required methods:</p>
+            <pre><code>#include "Strategy.h"
+
+class MyStrategy : public CppBacktester::Strategy {
+public:
+    MyStrategy() {}
+    
+    void initialize() override {
+        // Initialize strategy parameters
+    }
+    
+    void onBar(const Bar& bar) override {
+        // Strategy logic for each bar
+        if (someCondition) {
+            buy(100, bar.symbol);
+        } else if (otherCondition) {
+            sell(100, bar.symbol);
+        }
+    }
+    
+    void onOrderFilled(const Order& order) override {
+        // Handle filled orders
+    }
+    
+    void finalize() override {
+        // Clean up resources
+    }
+};</code></pre>
+        </section>
+
+        <section class="container">
+            <h2>Python Interface</h2>
+            
+            <h3>Basic Usage</h3>
+            <p>To use CppBacktester in a Python application, import the module and create a backtester instance:</p>
+            <pre><code>import cppbacktester as cb
+import pandas as pd
+
+# Create a backtester instance
+backtester = cb.Backtester()
+
+# Configure the backtester
+backtester.set_start_date("2020-01-01")
+backtester.set_end_date("2020-12-31")
+backtester.set_initial_capital(100000.0)
+
+# Load data
+data = pd.read_csv("path/to/data.csv")
+backtester.load_data(data)
+
+# Define a strategy
+class MyStrategy(cb.Strategy):
+    def initialize(self):
+        # Initialize strategy parameters
+        pass
+        
+    def on_bar(self, bar):
+        # Strategy logic for each bar
+        if some_condition:
+            self.buy(100, bar.symbol)
+        elif other_condition:
+            self.sell(100, bar.symbol)
+    
+    def on_order_filled(self, order):
+        # Handle filled orders
+        pass
+        
+    def finalize(self):
+        # Clean up resources
+        pass
+
+# Set the strategy
+strategy = MyStrategy()
+backtester.set_strategy(strategy)
+
+# Run the backtest
+results = backtester.run()
+
+# Analyze results
+results.print_summary()
+results.plot_equity_curve()</code></pre>
+
+            <h3>Integration with NumPy and Pandas</h3>
+            <p>CppBacktester's Python interface seamlessly integrates with NumPy and Pandas:</p>
+            <pre><code>import cppbacktester as cb
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Load data with pandas
+data = pd.read_csv("path/to/data.csv")
+
+# Create a backtester instance
+backtester = cb.Backtester()
+backtester.load_data(data)
+
+# Run the backtest
+results = backtester.run()
+
+# Convert results to pandas DataFrame
+results_df = results.to_dataframe()
+
+# Analyze with pandas
+daily_returns = results_df['equity'].pct_change()
+annual_return = daily_returns.mean() * 252
+annual_volatility = daily_returns.std() * np.sqrt(252)
+sharpe_ratio = annual_return / annual_volatility
+
+# Plot results
+plt.figure(figsize=(12, 6))
+results_df['equity'].plot()
+plt.title('Equity Curve')
+plt.xlabel('Date')
+plt.ylabel('Equity')
+plt.grid(True)
+plt.show()</code></pre>
+        </section>
+
+        <section class="container">
+            <h2>Using ONNX Models</h2>
+            <p>CppBacktester supports ONNX Runtime for integrating machine learning models into your strategies:</p>
+            
+            <h3>C++ Interface</h3>
+            <pre><code>#include "CppBacktester.h"
+#include "ONNXModel.h"
+
+class MLStrategy : public CppBacktester::Strategy {
+private:
+    std::unique_ptr<CppBacktester::ONNXModel> model_;
+    
+public:
+    void initialize() override {
+        // Load ONNX model
+        model_ = std::make_unique<CppBacktester::ONNXModel>("path/to/model.onnx");
+    }
+    
+    void onBar(const Bar& bar) override {
+        // Prepare input data
+        std::vector<float> features = prepareFeatures(bar);
+        
+        // Run inference
+        auto prediction = model_->predict(features);
+        
+        // Make trading decisions based on prediction
+        if (prediction[0] > 0.7) {
+            buy(100, bar.symbol);
+        } else if (prediction[0] < 0.3) {
+            sell(100, bar.symbol);
+        }
+    }
+    
+    // Other methods...
+};</code></pre>
+
+            <h3>Python Interface</h3>
+            <pre><code>import cppbacktester as cb
+import numpy as np
+
+class MLStrategy(cb.Strategy):
+    def initialize(self):
+        # Load ONNX model
+        self.model = cb.ONNXModel("path/to/model.onnx")
+    
+    def on_bar(self, bar):
+        # Prepare input data
+        features = self.prepare_features(bar)
+        
+        # Run inference
+        prediction = self.model.predict(features)
+        
+        # Make trading decisions based on prediction
+        if prediction[0] > 0.7:
+            self.buy(100, bar.symbol)
+        elif prediction[0] < 0.3:
+            self.sell(100, bar.symbol)
+    
+    def prepare_features(self, bar):
+        # Extract and normalize features
+        features = np.array([
+            bar.open, bar.high, bar.low, bar.close, bar.volume,
+            # Additional features...
+        ], dtype=np.float32)
+        
+        # Normalize features
+        features = (features - self.feature_mean) / self.feature_std
+        
+        return features</code></pre>
+        </section>
+
+        <section class="container">
+            <h2>Performance Considerations</h2>
+            <p>
+                For optimal performance, consider the following tips:
+            </p>
+            <ul>
+                <li>Use the C++ API for performance-critical applications</li>
+                <li>Pre-process and normalize data before feeding it to the backtester</li>
+                <li>Use efficient data structures for storing and accessing historical data</li>
+                <li>Minimize memory allocations inside the strategy's onBar method</li>
+                <li>Consider using parallel processing for parameter optimization</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2023 CppBacktester Project. All rights reserved.</p>
+    </footer>
+</body>
+</html>

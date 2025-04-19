@@ -136,7 +136,7 @@ void BacktestEngine::run() {
         // 2. Process broker orders based on current bar's data
         bool brokerError = false;
         try {
-            Utils::logMessage("Processing broker orders...");
+            // Utils::logMessage("Processing broker orders...");
             broker->processOrders(currentBar);
         } catch (const std::exception& e) {
             brokerError = true;
