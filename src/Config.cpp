@@ -3,7 +3,7 @@
 #include "Utils.h" 
 #include "json.hpp"
 #include <fstream>
-#include <iomanip>     // For std::setw in saving JSON
+#include <iomanip>
 #include <stdexcept>
 #include <cstdint> 
 #include "ColumnSpec.h"
@@ -21,16 +21,16 @@ void Config::setDefaultValues() {
     configData = {
         {"Data", {
             {"SourceType", "CSV"},
-            {"INPUT_CSV_PATH", "E:/data/cleaned_data.csv"},
+            {"INPUT_CSV_PATH", "../../../data/hmm.csv"},
             {"USE_PARTIAL_DATA", false},
             {"PARTIAL_DATA_PERCENT", 100.0},
-            {"Threads", 2},
+            {"Threads", 4},
 
             {"CSV_Timestamp_Col", 0},        // Column index (0-based) or Name (if header exists)
             {"CSV_Timestamp_Format", "%Y-%m-%d %H:%M:%S"}, // strptime/get_time format + "%f" for custom ms handling
             // {"CSV_Open_Col", 1},              // Optional: Use -1 if not present or calculated
             {"CSV_Close_Col", 1},
-            // {"CSV_Volume_Col", 3},
+            // {"CSV_Volume_Col", 3}, 
             // {"CSV_High_Col", -1},
             // {"CSV_Close_Col", -1},
             {"CSV_Delimiter", ","},
@@ -48,10 +48,11 @@ void Config::setDefaultValues() {
         }},
         {"Strategy", {
             {"STRATEGY_NAME", "ML"},
-            {"Type", "ML"},           
+            {"Type", "ML"},           // Random, ML, Benchmark
             {"EntryThreshold", 0.0},   
             {"StopLossPips", 50.0},       
             {"TakeProfitPips", 50.0},  
+            {"ONE_TRADE", false},
             {"HMMOnnxPath", "hmm_saved/hmm_model.onnx"},
             {"RegimeModelOnnxPaths", {
                 {"0", "xgb_saved/model_0.onnx"},
@@ -292,6 +293,8 @@ template double Config::getNested<double>(const std::string& keyPath, const doub
 template int Config::getNested<int>(const std::string& keyPath, const int& defaultValue) const;
 template bool Config::getNested<bool>(const std::string& keyPath, const bool& defaultValue) const;
 template nlohmann::json Config::getNested<nlohmann::json>(const std::string&, const nlohmann::json&) const;
+template size_t Config::getNested<size_t>(const std::string&, const size_t&) const;
+
 
 template void Config::set<std::string>(const std::string& key, const std::string& value);
 template void Config::set<double>(const std::string& key, const double& value);

@@ -23,59 +23,64 @@
         "CSV_Has_Header": true,
         "CSV_Timestamp_Col": 0,
         "CSV_Timestamp_Format": "%Y-%m-%d %H:%M:%S",
-        "INPUT_CSV_PATH": "E:/UMHack/btc_market_data.csv",
+        "INPUT_CSV_PATH": "../../../data/hmm.csv",
         "PARTIAL_DATA_PERCENT": 100.0,
         "SourceType": "CSV",
+        "Threads": 2,
         "USE_PARTIAL_DATA": false
-    },
-    "Strategy": {
-        "BANKRUPTCY_PROTECTION": true,
-        "DEBUG_MODE": false,
-        "FIXED_SIZE": 20.0,
-        "FORCE_EXIT_PERCENT": -50.0,
-        "ONE_TRADE": true,
-        "POSITION_TYPE": "fixed",
-        "STOP_LOSS_ENABLED": true,
-        "STOP_LOSS_PIPS": 50.0,
-        "STRATEGY_NAME": "Random",
-        "TAKE_PROFIT_ENABLED": true,
-        "TAKE_PROFIT_PIPS": 50.0
-    },
-    "RegimeDetection": {
-        "type": "HMM",
-        "params": {
-            "n_components": 2,
-            "covariance_type": "full",
-            "random_state": 42
-        },
-        "model_path": "hmm_saved/hmm_model.pkl"
     },
     "Models": [
         {
-            "name": "xgb_regime_A",
-            "type": "XGBoost",
-            "hyperparams": {
-                "n_estimators": 100,
-                "max_depth": 3,
-                "learning_rate": 0.1,
-                "subsample": 1.0,
-                "colsample_bytree": 1.0
-            },
-            "regimes": [0],
             "features": [],
-            "model_path": "scripts/xgb_saved/model_A.json"
+            "hyperparams": {
+                "colsample_bytree": 1.0,
+                "learning_rate": 0.1,
+                "max_depth": 3,
+                "n_estimators": 100,
+                "subsample": 1.0
+            },
+            "model_path": "xgb_saved/model_0.json",
+            "name": "xgb_regime_0",
+            "regimes": [
+                0
+            ],
+            "type": "XGBoost"
         },
         {
-            "name": "xgb_regime_B",
-            "type": "XGBoost",
-            "hyperparams": {
-                "n_estimators": 100,
-                "max_depth": 3,
-                "learning_rate": 0.1
-            },
-            "regimes": [1],
             "features": [],
-            "model_path": "scripts/xgb_saved/model_B.json"
+            "hyperparams": {
+                "learning_rate": 0.1,
+                "max_depth": 3,
+                "n_estimators": 100
+            },
+            "model_path": "xgb_saved/model_1.json",
+            "name": "xgb_regime_1",
+            "regimes": [
+                1
+            ],
+            "type": "XGBoost"
         }
-    ]
+    ],
+    "RegimeDetection": {
+        "model_path": "../../../hmm_saved/hmm_model.pkl",
+        "params": {
+            "covariance_type": "full",
+            "n_components": 2,
+            "random_state": 42
+        },
+        "type": "HMM"
+    },
+    "Strategy": {
+        "EntryThreshold": 0.0,
+        "HMMOnnxPath": "hmm_saved/hmm_model.onnx",
+        "ONE_TRADE": false,
+        "RegimeModelOnnxPaths": {
+            "0": "xgb_saved/model_0.onnx",
+            "1": "xgb_saved/model_1.onnx"
+        },
+        "STRATEGY_NAME": "ML",
+        "StopLossPips": 50.0,
+        "TakeProfitPips": 50.0,
+        "Type": "ML"
+    }
 }

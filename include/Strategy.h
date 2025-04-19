@@ -33,7 +33,8 @@ public:
     // Called once before the backtest loop starts
     virtual void init() = 0;
     // Called for each bar of data after broker processing for that bar
-    virtual void next(const Bar& currentBar, size_t currentBarIndex, const std::map<std::string, double>& currentPrices) = 0;
+    // void next(const Bar& currentBar, size_t currentBarIndex, const std::map<std::string, double>& currentPrices) = 0;
+    virtual void next(const Bar& currentBar, size_t currentBarIndex, const double currentPrice) = 0;
     // Called once after the backtest loop finishes
     virtual void stop() = 0;
     // Called by the Broker when an order status changes

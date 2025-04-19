@@ -15,13 +15,14 @@ private:
     double entryProbability = 0.01;    // Chance per bar to attempt entry
     double benchmarkFixedSize = 1.0;   // Fixed position size
     bool debugMode = false;            // Debug output flag
-    bool one_trade = true;
+    bool one_trade = false;
     bool taken_trade = false;
     
     // --- State ---
     Position currentPosition;
     bool inPosition = false;
     int currentOrderId = -1;
+    double entryPrice_;  // store entry fill price for profit check
     
     // --- Metrics Tracking ---
     std::unique_ptr<TradingMetrics> metrics;
@@ -37,7 +38,8 @@ public:
     
     // --- Overridden Lifecycle Methods ---
     void init() override;
-    void next(const Bar& currentBar, size_t currentBarIndex, const std::map<std::string, double>& currentPrices) override;
+    // void next(const Bar& currentBar, size_t currentBarIndex, const std::map<std::string, double>& currentPrices) override;
+    void next(const Bar& currentBar, size_t currentBarIndex, const double currentPrices) override;
     void stop() override;
     void notifyOrder(const Order& order) override;
 };

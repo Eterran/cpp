@@ -23,6 +23,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS OFF) # Avoid compiler-specific extensions
 
+# Add global definitions
+add_definitions(-DPYBIND11_DETAILED_ERROR_MESSAGES)
+
 # --- Build Options ---
 option(BUILD_EXECUTABLE "Build the C++ executable target" ON)
 option(BUILD_PYTHON_MODULE "Build the Python module target" ON)
@@ -186,6 +189,12 @@ if(BUILD_EXECUTABLE)
         "${ONNXRUNTIME_LIBRARY}"
         "${OUTPUT_DIR}"
     )
+    # Copy xgboost DLL for executable
+    add_custom_command(TARGET ${EXECUTABLE_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/third_party/xgboost/xgboost.dll"
+            "${OUTPUT_DIR}/bin"
+    )
 endif()
 
 # --- Python Module Target ---
@@ -229,5 +238,11 @@ if(BUILD_PYTHON_MODULE)
         "${ORT_ROOT}"
         "${ONNXRUNTIME_LIBRARY}"
         "${OUTPUT_DIR}"
+    )
+    # Copy xgboost DLL for Python module
+    add_custom_command(TARGET ${MODULE_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/third_party/xgboost/xgboost.dll"
+            "${OUTPUT_DIR}/lib"
     )
 endif()

@@ -4,6 +4,7 @@
 #include "RandomStrategy.h"
 #include "HMMStrategy.h"
 #include "Utils.h"
+#include "BenchmarkStrategy.h"
 #include <iostream>
 #include <memory>
 #include <string>
@@ -73,6 +74,8 @@ int main() {
         std::unique_ptr<Strategy> strategy;
         if (stratType == "ML") {
             strategy = std::make_unique<HMMStrategy>();
+        } else if (stratType == "Benchmark") {
+            strategy = std::make_unique<BenchmarkStrategy>();
         } else {
             strategy = std::make_unique<RandomStrategy>();
         }

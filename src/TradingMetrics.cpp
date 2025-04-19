@@ -67,13 +67,15 @@ double TradingMetrics::getSharpeRatio() const {
     }
     double stdDev = std::sqrt(sqSum / returns.size());
 
-    // Annualized Sharpe Ratio (assuming daily returns and 365 trading days)
+    // Annualized Sharpe Ratio (assuming hourly returns and 365 trading days)
     if (stdDev <= 0 || returns.size() < 2) {
         Utils::logMessage("Sharpe Ratio calculation: Insufficient data or zero standard deviation. Returns size: " + std::to_string(returns.size()) + ", StdDev: " + std::to_string(stdDev));
         return 0.0;
     }
-
-    double sharpeRatio = (meanReturn / stdDev) * std::sqrt(365);
+    // double riskFreeRate = ...; // Hourly risk-free rate
+    // double excessMeanReturn = meanReturn - riskFreeRate;
+    // double sharpeRatio = (excessMeanReturn / stdDev) * std::sqrt(365*24);
+    double sharpeRatio = (meanReturn / stdDev) * std::sqrt(365*24);
     Utils::logMessage("Sharpe Ratio calculation: Mean Return: " + std::to_string(meanReturn) + ", StdDev: " + std::to_string(stdDev) + ", Sharpe: " + std::to_string(sharpeRatio));
     return sharpeRatio;
 }

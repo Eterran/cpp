@@ -62,6 +62,7 @@ public:
     double getStartingCash() const;
     double getCash() const;
     double getValue(const std::map<std::string, double>& currentPrices); // Calculate total portfolio value
+    double getValue(const double currentPrices); // Calculate total portfolio value
 
     // --- Order Management ---
     // Creates an order and adds it to pending queue. Returns the order ID.

@@ -3,7 +3,7 @@
 
 #include <string>
 #include <chrono>
-#include <vector> // Added in case a split function is needed later
+#include <vector>
 
 namespace Utils {
     // Parses "YYYYMMDD HHMMSSfff" format. Throws std::runtime_error on failure.

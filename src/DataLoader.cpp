@@ -48,7 +48,7 @@ void DataLoader::initParserSteps() {
     std::string csvTsFmt = config.getNested<std::string>("/Data/CSV_Timestamp_Format", "%Y-%m-%d %H:%M:%S");
     char csvDelim = config.getNested<std::string>("/Data/CSV_Delimiter", ",")[0];
     parserSteps.emplace_back(
-        std::make_unique<CSVParserStep>(std::move(csvSpecs), csvTsFmt, csvDelim)
+        std::make_unique<CSVParserStep>(config, std::move(csvSpecs), csvTsFmt, csvDelim)
     );
     // JSON/API pipeline
     auto apiSpecs = config.getColumnSpecs("/Data/API_Columns");
@@ -61,7 +61,18 @@ void DataLoader::initParserSteps() {
 // Delegates to parser steps
 bool DataLoader::parseLine(const std::string& line, Bar& bar) const {
     for (const auto& step : parserSteps) {
-        if (step->parse(line, bar)) return true;
+        if (step->parse(line, bar)) {
+            // REMOVE
+            // Utils::logMessage("DataLoader: Parsed bar: " 
+            //     + Utils::timePointToString(bar.timestamp)
+            //     + " - " + std::to_string(bar.columns.size()) + " columns"
+            // );
+            // for (const auto& x : bar.columns) {
+            //     Utils::logMessage("DataLoader: Parsed column: " + std::to_string(x));
+            // }
+            // REMOVE END
+            return true;
+        }
     }
     return false;
 }
@@ -95,7 +106,7 @@ std::vector<Bar> DataLoader::loadData(bool usePartial, double partialPercent) {
 
     // Parse phase: sequential or parallel
     std::vector<Bar> data;
-    int numThreads = config.getNested<int>("/Data/Threads", 2);
+    int numThreads = config.getNested<int>("/Data/Threads", 4);
     if (numThreads > 1 && lines.size() > 0) {
         Utils::logMessage("DataLoader: Parsing in parallel using " + std::to_string(numThreads) + " threads.");
         std::vector<std::future<std::vector<Bar>>> futures;

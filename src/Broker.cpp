@@ -52,24 +52,17 @@ void Broker::setStrategy(Strategy* strat) {
 }
 
 // --- Helpers ---
-double Broker::getFillPrice(const Bar& bar, OrderType orderType, double requestedPrice) const {
+double Broker::getFillPrice(const Bar& bar, OrderType /*orderType*/, double requestedPrice) const {
     // If a specific price is requested, use that price
     if (requestedPrice > 0) {
         return requestedPrice;
     }
 
-    // Otherwise use market prices
-    if (orderType == OrderType::BUY) {
-        // Buyer gets the ASK price (higher)
-        return (bar.ask > 0) ? bar.ask : bar.close; // Use ask if available, else close
-    } else { // SELL
-        // Seller gets the BID price (lower)
-        return (bar.bid > 0) ? bar.bid : bar.close; // Use bid if available, else close
-    }
+    return bar.columns[1];
 }
 
 double Broker::calculateMarginNeeded(double size, double price) const {
-    if (leverage <= 0) return std::abs(size * price); // No leverage, full amount needed
+    if (leverage <= 0) return std::abs(size * price);
     return std::abs(size * price) / leverage;
 }
 
@@ -103,7 +96,7 @@ double Broker::getCash() const {
 }
 
 // calculate acc value including floating PnL
-double Broker::getValue(const std::map<std::string, double>& currentPrices) {
+double Broker::getValue(const double currentPrices) {
     double totalValue = cash;
     double positionsValue = 0.0;
 
@@ -111,37 +104,38 @@ double Broker::getValue(const std::map<std::string, double>& currentPrices) {
         const std::string& symbol = pair.first;
         const Position& pos = pair.second;
 
-        auto priceIt = currentPrices.find(symbol);
-        if (priceIt != currentPrices.end()) {
+        // auto priceIt = currentPrices.find(symbol);
+        // if (priceIt != currentPrices.end()) {
             // For short positions (negative size), PnL should be negative when current price > entry price
-            positionsValue += pos.calculateUnrealizedPnL(priceIt->second);
+            // positionsValue += pos.calculateUnrealizedPnL(priceIt->second);
+            positionsValue += pos.calculateUnrealizedPnL(currentPrices);
 
             // Debug logging for significant positions to help troubleshoot
             if (std::abs(pos.size) > 0.01) {
                 Utils::logMessage("Position PnL calculation: Symbol=" + symbol +
                                  ", Size=" + std::to_string(pos.size) +
                                  ", Entry=" + std::to_string(pos.entryPrice) +
-                                 ", Current=" + std::to_string(priceIt->second) +
-                                 ", PnL=" + std::to_string(pos.calculateUnrealizedPnL(priceIt->second)));
+                                 ", Current=" + std::to_string(currentPrices) +
+                                 ", PnL=" + std::to_string(pos.calculateUnrealizedPnL(currentPrices)));
             }
-        } else {
-            // If price for an open position isn't available, we can't calculate its current value.
-            // Option 1: Log warning and exclude it (underestimates value).
-            // Option 2: Use last known price (might be stale).
-            // Option 3: Use entry price (assumes no change).
-            Utils::logMessage("Broker::getValue Warning: Current price for open position '" + symbol + "' not provided. Using entry value for PnL calculation (PnL = 0 for this asset).");
-            // Effectively adds 0 PnL for this asset in this case
-             // positionsValue += 0.0;
-              // Or try adding the original cost back? No, stick to PnL calculation method.
-              // Add the nominal entry value maybe? Needs careful thought. Let's stick to PnL calculation.
-              // Unrealized PnL calculation inherently handles this - if price isn't found, it cant calculate.
-              // Recalculate how getValue should work: Value = Cash + Sum(CurrentValue of Assets)
-              // CurrentValue = EntryCost + UnrealizedPnL
-              // Let's recalculate simpler: Value = Cash + Sum(Size * CurrentPrice)
+        // } else {
+        //     // If price for an open position isn't available, we can't calculate its current value.
+        //     // Option 1: Log warning and exclude it (underestimates value).
+        //     // Option 2: Use last known price (might be stale).
+        //     // Option 3: Use entry price (assumes no change).
+        //     Utils::logMessage("Broker::getValue Warning: Current price for open position '" + symbol + "' not provided. Using entry value for PnL calculation (PnL = 0 for this asset).");
+        //     // Effectively adds 0 PnL for this asset in this case
+        //      // positionsValue += 0.0;
+        //       // Or try adding the original cost back? No, stick to PnL calculation method.
+        //       // Add the nominal entry value maybe? Needs careful thought. Let's stick to PnL calculation.
+        //       // Unrealized PnL calculation inherently handles this - if price isn't found, it cant calculate.
+        //       // Recalculate how getValue should work: Value = Cash + Sum(CurrentValue of Assets)
+        //       // CurrentValue = EntryCost + UnrealizedPnL
+        //       // Let's recalculate simpler: Value = Cash + Sum(Size * CurrentPrice)
 
-             // Alternative getValue: Sum of liquidation value
-             // positionsValue += pos.size * priceIt->second; // This calculates the current nominal value of the position asset
-        }
+        //      // Alternative getValue: Sum of liquidation value
+        //      // positionsValue += pos.size * priceIt->second; // This calculates the current nominal value of the position asset
+        // }
     }
     // Correct approach: Account Value = Cash + Unrealized PnL
     totalValue += positionsValue;
@@ -286,7 +280,8 @@ void Broker::executeOpenOrder(Order& order, const Bar& executionBar) {
                          ", Entry: " + std::to_string(newPos.entryPrice) +
                          ", SL: " + std::to_string(newPos.stopLoss) +
                          ", TP: " + std::to_string(newPos.takeProfit) +
-                         ", Commission: " + std::to_string(order.commission));
+                         ", Commission: " + std::to_string(order.commission) +
+                         ", - Date: " + Utils::timePointToString(executionBar.timestamp));
     }
 
     // --- Finalize ---
@@ -307,7 +302,14 @@ void Broker::executeCloseOrder(Order& order, Position& existingPosition, const B
     }
 
     // Determine actual size to close (cannot close more than exists)
-    double sizeToClose = std::min(order.requestedSize, std::abs(existingPosition.size));
+    double sizeToClose;
+    // If order closes the existing position (SELL on long, BUY on short), always close entire
+    if ((order.type == OrderType::SELL && existingPosition.size > 0) ||
+        (order.type == OrderType::BUY && existingPosition.size < 0)) {
+        sizeToClose = std::abs(existingPosition.size);
+    } else {
+        sizeToClose = std::min(order.requestedSize, std::abs(existingPosition.size));
+    }
     if (sizeToClose < 1e-9) { // Avoid closing zero or tiny amounts
          Utils::logMessage("Broker Info: Close order " + std::to_string(order.id) + " has negligible size (" + std::to_string(sizeToClose) + "). Rejecting.");
          rejectOrder(order, OrderStatus::REJECTED, executionBar);
@@ -339,32 +341,28 @@ void Broker::executeCloseOrder(Order& order, Position& existingPosition, const B
     cash -= order.commission; // Deduct commission
 
     // --- Calculate PnL on the closed portion ---
-    // Sign of closed portion is opposite of existingPosition.size
-    double closedSizeSigned = (existingPosition.size > 0) ? -sizeToClose : sizeToClose;
-
-    // Calculate PnL differently for long vs short positions
-    double pnl = 0.0;
-    if (existingPosition.size > 0) { // Long position
-        // For long: (exit price - entry price) * size
-        pnl = (fillPrice - existingPosition.entryPrice) * closedSizeSigned;
-    } else { // Short position
-        // For short: (entry price - exit price) * size
-        pnl = (existingPosition.entryPrice - fillPrice) * closedSizeSigned;
-    }
-
+    double closedQty = sizeToClose;
+    double pnl = (existingPosition.size > 0)
+        ? (fillPrice - existingPosition.entryPrice) * closedQty
+        : (existingPosition.entryPrice - fillPrice) * closedQty;
     cash += pnl; // Add realized P/L to cash
 
-    // --- Update Position ---
-    double newPositionSize = existingPosition.size + closedSizeSigned; // Add signed closed amount
+    // --- Update Position Size ---
+    double newPositionSize;
+    if (existingPosition.size > 0) { // Long position
+        newPositionSize = existingPosition.size - closedQty;
+    } else {
+        newPositionSize = existingPosition.size + closedQty;
+    }
 
     if (std::abs(newPositionSize) < 1e-9) { // Position fully closed
         // Create a more detailed log message with clear PnL calculation
         std::string direction = (existingPosition.size > 0) ? "LONG" : "SHORT";
         std::string pnlCalcStr = (existingPosition.size > 0) ?
-            "(Exit " + std::to_string(fillPrice) + " - Entry " + std::to_string(existingPosition.entryPrice) + ") * Size " + std::to_string(closedSizeSigned) :
-            "(Entry " + std::to_string(existingPosition.entryPrice) + " - Exit " + std::to_string(fillPrice) + ") * Size " + std::to_string(closedSizeSigned);
+            "(Exit " + std::to_string(fillPrice) + " - Entry " + std::to_string(existingPosition.entryPrice) + ") * Size " + std::to_string(closedQty) :
+            "(Entry " + std::to_string(existingPosition.entryPrice) + " - Exit " + std::to_string(fillPrice) + ") * Size " + std::to_string(closedQty);
 
-        Utils::logMessage("Broker: Closing " + direction + " position " + order.symbol + ". Closed Size: " + std::to_string(std::abs(closedSizeSigned))
+        Utils::logMessage("Broker: Closing " + direction + " position " + order.symbol + ". Closed Size: " + std::to_string(std::abs(closedQty))
                             + ", Entry: " + std::to_string(existingPosition.entryPrice)
                             + ", Exit: " + std::to_string(fillPrice)
                             + ", PnL: " + std::to_string(pnl) + " [" + pnlCalcStr + "]"
@@ -373,10 +371,10 @@ void Broker::executeCloseOrder(Order& order, Position& existingPosition, const B
     } else { // Position reduced (partial close)
         std::string direction = (existingPosition.size > 0) ? "LONG" : "SHORT";
         std::string pnlCalcStr = (existingPosition.size > 0) ?
-            "(Exit " + std::to_string(fillPrice) + " - Entry " + std::to_string(existingPosition.entryPrice) + ") * Size " + std::to_string(closedSizeSigned) :
-            "(Entry " + std::to_string(existingPosition.entryPrice) + " - Exit " + std::to_string(fillPrice) + ") * Size " + std::to_string(closedSizeSigned);
+            "(Exit " + std::to_string(fillPrice) + " - Entry " + std::to_string(existingPosition.entryPrice) + ") * Size " + std::to_string(closedQty) :
+            "(Entry " + std::to_string(existingPosition.entryPrice) + " - Exit " + std::to_string(fillPrice) + ") * Size " + std::to_string(closedQty);
 
-        Utils::logMessage("Broker: Reducing " + direction + " position " + order.symbol + ". Closed Size: " + std::to_string(std::abs(closedSizeSigned))
+        Utils::logMessage("Broker: Reducing " + direction + " position " + order.symbol + ". Closed Size: " + std::to_string(std::abs(closedQty))
                             + ", Entry: " + std::to_string(existingPosition.entryPrice)
                             + ", Exit: " + std::to_string(fillPrice)
                             + ", PnL: " + std::to_string(pnl) + " [" + pnlCalcStr + "]");
@@ -555,15 +553,19 @@ int Broker::submitOrder(Order order) { // Pass Order struct by value (makes a co
         return -1;
     }
 
-    // Assign unique ID and timestamp before adding
-    order.id = nextOrderId++;
+    // Assign unique ID if not already set
+    int retId;
+    if (order.id < 0) {
+        order.id = nextOrderId++;
+    }
+    retId = order.id;
     order.status = OrderStatus::SUBMITTED; // Mark as ready for processing
     order.creationTime = std::chrono::system_clock::now();
 
     pendingOrders.push_back(order); // Add the modified copy to pending queue
     Utils::logMessage("Broker: Order " + std::to_string(order.id) + " submitted. Type: " + (order.type == OrderType::BUY ? "BUY" : "SELL") + ", Size: " + std::to_string(order.requestedSize) + ", Symbol: " + order.symbol);
 
-    return order.id; // Return the assigned ID
+    return retId; // Return the assigned or existing ID
 }
 
 // --- Process Orders Loop (Refactored) ---
@@ -575,7 +577,7 @@ void Broker::processOrders(const Bar& currentBar) {
         std::map<std::string, double> currentPrices;
         // Create a map with close prices for all symbols with open positions
         for (const auto& pair : positions) {
-            currentPrices[pair.first] = currentBar.close;
+            currentPrices[pair.first] = currentBar.columns[1];
         }
         checkTakeProfitStopLoss(currentBar, currentPrices);
 

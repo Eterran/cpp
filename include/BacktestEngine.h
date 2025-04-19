@@ -20,6 +20,7 @@ private:
     std::unique_ptr<Strategy> strategy; // Strategy managed by engine
     size_t currentBarIndex;
     std::map<std::string, double> currentPrices; // Map symbol to current price (close)
+    double currentPrice;
 
     DataLoader dataLoader;
 

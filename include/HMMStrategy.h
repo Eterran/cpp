@@ -22,7 +22,8 @@ public:
     HMMStrategy();
     std::string getName() const override;
     void init() override;
-    void next(const Bar& currentBar, size_t currentBarIndex, const std::map<std::string, double>& currentPrices) override;
+    // void next(const Bar& currentBar, size_t currentBarIndex, const std::map<std::string, double>& currentPrice) override;
+    void next(const Bar& currentBar, size_t currentBarIndex, const double currentPrice) override;
     void stop() override;
     void notifyOrder(const Order& order) override;
 
@@ -31,5 +32,5 @@ protected:
      * Hook for mapping a model prediction and price into trade orders.
      * Default implementation: if no position and pred > threshold, submit a BUY with TP/SL.
      */
-    virtual void handlePrediction(float prediction, double price);
+    virtual void handlePrediction(float prediction);
 };

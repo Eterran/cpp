@@ -3,8 +3,8 @@
 #include "Utils.h"
 #include "Config.h"
 #include <stdexcept>
-#include <iostream> // For error messages
-#include <chrono>   // For timing the backtest
+#include <iostream>
+#include <chrono>
 
 // --- Constructor ---
 // Initialize members, especially DataLoader and Broker
@@ -114,8 +114,6 @@ void BacktestEngine::run() {
     for (currentBarIndex = 0; currentBarIndex < totalBars; ++currentBarIndex) {
         const Bar& currentBar = historicalData[currentBarIndex];
 
-        // Reduce logging frequency to improve performance
-        // Only log every 500 bars or for important events
         if (currentBarIndex % 500 == 0) {
             Utils::logMessage("Processing bar " + std::to_string(currentBarIndex) + "/" + 
                               std::to_string(totalBars) + " - Date: " + Utils::timePointToString(currentBar.timestamp));
@@ -123,7 +121,13 @@ void BacktestEngine::run() {
 
         // 1. Update current prices map (simple version: only primary data)
         try {
-            currentPrices[primaryDataName] = currentBar.close;
+            // Utils::logMessage("Updating prices...");
+            if (currentBar.columns.size() <= 1) {
+                Utils::logMessage("BacktestEngine Error: Insufficient columns (" + std::to_string(currentBar.columns.size()) + ") for price update at bar " + std::to_string(currentBarIndex));
+                continue;
+            }
+            currentPrice= currentBar.columns[1];
+            // Utils::logMessage("Updated price for " + primaryDataName + ": " + std::to_string(currentPrice));
         } catch (const std::exception& e) {
             Utils::logMessage("BacktestEngine Error: Exception updating prices: " + std::string(e.what()));
             continue; // Skip to next bar if we can't update prices
@@ -132,6 +136,7 @@ void BacktestEngine::run() {
         // 2. Process broker orders based on current bar's data
         bool brokerError = false;
         try {
+            Utils::logMessage("Processing broker orders...");
             broker->processOrders(currentBar);
         } catch (const std::exception& e) {
             brokerError = true;
@@ -154,7 +159,7 @@ void BacktestEngine::run() {
             // if (currentBarIndex % 500 == 0) {
             //     Utils::logMessage("Calling strategy->next for bar " + std::to_string(currentBarIndex));
             // }
-            strategy->next(currentBar, currentBarIndex, currentPrices);
+            strategy->next(currentBar, currentBarIndex, currentPrice);
             // if (currentBarIndex % 500 == 0) {
             //     Utils::logMessage("Completed strategy->next call successfully");
             // }

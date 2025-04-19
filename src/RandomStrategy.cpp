@@ -35,7 +35,6 @@ void RandomStrategy::init() {
         one_trade = config->getNested<bool>("/Strategy/ONE_TRADE", true);
     } catch (const std::exception& e) {
         Utils::logMessage("RandomStrategy::init Warning: Error loading parameters: " + std::string(e.what()));
-        // Use defaults already set in class definition
     }
 
     // Validate parameters
@@ -69,7 +68,7 @@ void RandomStrategy::init() {
 }
 
 // --- Per-Bar Logic ---
-void RandomStrategy::next(const Bar& , size_t currentBarIndex, const std::map<std::string, double>& currentPrices) {
+void RandomStrategy::next(const Bar& , size_t currentBarIndex, const double currentPrices) {
     // Log position status every 500 bars for debugging
     // if (currentBarIndex % 500 == 0 || currentBarIndex < 10) {
     //     Utils::logMessage("Bar " + std::to_string(currentBarIndex) + ": inPosition=" + std::to_string(inPosition) + ", ONE_TRADE=" + std::to_string(one_trade));
@@ -109,7 +108,7 @@ void RandomStrategy::next(const Bar& , size_t currentBarIndex, const std::map<st
         entryOrder.reason = OrderReason::ENTRY_SIGNAL;
 
         entryOrder.requestedSize = desiredSize;
-        entryOrder.requestedPrice = currentPrices.at(dataName);
+        entryOrder.requestedPrice = currentPrices;
 
         // For BUY (LONG): TP above entry, SL below entry
         // For SELL (SHORT): TP below entry, SL above entry
@@ -195,10 +194,21 @@ void RandomStrategy::next(const Bar& , size_t currentBarIndex, const std::map<st
 
 // --- End of Backtest ---
 void RandomStrategy::stop() {
-    // Get final portfolio value
-    double finalValue = broker->getValue({{dataName, data->back().close}});
-
+    // Force exit any open position at last bar for metric capture
+    if (inPosition) {
+        double lastPrice = data->back().columns[1];
+        Order closeOrder;
+        closeOrder.type = (currentPosition.size > 0) ? OrderType::SELL : OrderType::BUY;
+        closeOrder.symbol = dataName;
+        closeOrder.reason = OrderReason::MANUAL_CLOSE;
+        closeOrder.requestedSize = std::abs(currentPosition.size);
+        closeOrder.requestedPrice = lastPrice;
+        broker->submitOrder(closeOrder);
+        // process immediately to trigger notifyOrder
+        broker->processOrders(data->back());
+    }
     // Generate and log the summary report
+    double finalValue = broker->getValue(data->back().columns[1]);
     std::string report = metrics->generateSummaryReport(finalValue, "RandomStrategy (Theoretical 50/50)");
     Utils::logMessage(report);
 }
@@ -210,44 +220,27 @@ void RandomStrategy::notifyOrder(const Order& order) {
     }
 
     if (order.status == OrderStatus::FILLED) {
-        // Record commission
+        // Record commission on every fill
         metrics->recordCommission(order.commission);
 
-        // --- Entry Fill ---
         if (order.reason == OrderReason::ENTRY_SIGNAL && !inPosition) {
-            Utils::logMessage("Setting inPosition to true after entry");
+            // Entry
             inPosition = true;
             currentPosition.symbol = order.symbol;
             currentPosition.size = (order.type == OrderType::BUY) ? order.filledSize : -order.filledSize;
             currentPosition.entryPrice = order.filledPrice;
-
-            std::ostringstream oss;
-            oss << ">>> ENTRY EXECUTED <<< | "
-                << ((order.type == OrderType::BUY) ? "BUY" : "SELL") << " "
-                << order.filledSize << " @ " << order.filledPrice;
-            Utils::logMessage(oss.str());
-
+            Utils::logMessage(">>> ENTRY EXECUTED <<< | " + std::string(order.type == OrderType::BUY ? "BUY" : "SELL") +
+                            " " + std::to_string(order.filledSize) + " @ " + std::to_string(order.filledPrice));
         }
-        // --- Exit Fill ---
-        else if (inPosition && order.symbol == currentPosition.symbol &&
-                (order.reason == OrderReason::TAKE_PROFIT || order.reason == OrderReason::STOP_LOSS ||
-                 ((order.type == OrderType::SELL && currentPosition.size > 0.0) ||
-                  (order.type == OrderType::BUY && currentPosition.size < 0.0)))) {
-
-            Utils::logMessage("Exit order detected: Reason=" + std::to_string(static_cast<int>(order.reason)) + ", Type=" + std::to_string(static_cast<int>(order.type)) + ", Position Size=" + std::to_string(currentPosition.size));
-
-            // Determine if profitable and record the trade
-            bool profitable = (order.reason == OrderReason::TAKE_PROFIT);
+        else if ((order.reason == OrderReason::EXIT_SIGNAL || order.reason == OrderReason::TAKE_PROFIT ||
+                  order.reason == OrderReason::STOP_LOSS || order.reason == OrderReason::MANUAL_CLOSE) &&
+                 inPosition && order.symbol == currentPosition.symbol) {
+            // Exit
+            bool profitable = (order.filledPrice * (currentPosition.size > 0 ? 1 : -1) > currentPosition.entryPrice * (currentPosition.size > 0 ? 1 : -1));
             metrics->recordTrade(profitable);
-
-            std::string exitReasonStr = profitable ? "TP" : "SL";
-
-            Utils::logMessage("<<< EXIT EXECUTED (" + exitReasonStr + ") >>> | "
-                           + ((order.type == OrderType::BUY) ? "BUY" : "SELL") + " "
-                           + std::to_string(order.filledSize) + " @ " + std::to_string(order.filledPrice)
-                           + (profitable ? " (PROFIT)" : " (LOSS)"));
-
-            Utils::logMessage("Setting inPosition to false after exit");
+            Utils::logMessage("<<< EXIT EXECUTED >>> | " + std::string(order.type == OrderType::BUY ? "BUY" : "SELL") +
+                            " " + std::to_string(order.filledSize) + " @ " + std::to_string(order.filledPrice) +
+                            (profitable ? " (PROFIT)" : " (LOSS)"));
             inPosition = false;
             currentPosition = Position();
         }
