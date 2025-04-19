@@ -67,7 +67,30 @@ std::vector<float> XGBoostModelInterface::Predict(const std::vector<float>& inpu
 }
 
 std::vector<float> XGBoostModelInterface::predict2D(const std::vector<std::vector<float>> inputData){
-    return {};
+    if (inputData.empty()) {
+        return {};
+    }
+    
+    // Flatten the 2D input data into a 1D vector
+    size_t rows = inputData.size();
+    size_t cols = inputData[0].size();
+    
+    std::vector<float> flatData;
+    flatData.reserve(rows * cols);
+    
+    for (const auto& row : inputData) {
+        if (row.size() != cols) {
+            std::cerr << "Error: Inconsistent row sizes in 2D input data" << std::endl;
+            return {};
+        }
+        flatData.insert(flatData.end(), row.begin(), row.end());
+    }
+    
+    // Define the shape for the flattened data
+    std::vector<int64_t> shape = {static_cast<int64_t>(rows), static_cast<int64_t>(cols)};
+    
+    // Use the standard Predict method with the flattened data
+    return Predict(flatData, shape);
 }
 
 void XGBoostModelInterface::PrintModelInfo() {
