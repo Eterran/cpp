@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Reference - CppBacktester Documentation</title>
+    <title>Classes overview - CppBacktester Documentation</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header>
         <h1>CppBacktester</h1>
-        <p>API Reference</p>
+        <p>Classes Overview</p>
     </header>
 
     <nav>
@@ -24,574 +24,317 @@
 
     <main>
         <section class="container">
-            <h2>C++ API Reference</h2>
+            <h2>Overview</h2>
             <p>
-                This section provides detailed documentation for the C++ API of CppBacktester.
+                This section provides detailed documentation for the classes of CppBacktester.
             </p>
 
-            <h3>Backtester Class</h3>
+            <h3>BacktestEngine Class</h3>
             <p>The main class for running backtests.</p>
-            <pre><code>class Backtester {
+            <pre><code>class BacktestEngine {
 public:
-    // Constructors
-    Backtester();
-    explicit Backtester(const BacktesterConfig& config);
-    
-    // Configuration methods
-    void setStartDate(const std::string& date);
-    void setEndDate(const std::string& date);
-    void setInitialCapital(double capital);
-    void setCommissionModel(std::shared_ptr<CommissionModel> model);
-    void setSlippageModel(std::shared_ptr<SlippageModel> model);
-    
-    // Data loading
-    void loadData(const std::string& filepath);
-    void loadData(const std::vector<Bar>& bars);
-    
-    // Strategy management
-    void setStrategy(std::shared_ptr<Strategy> strategy);
-    
-    // Execution
-    BacktestResults run();
-    
-    // Accessors
-    double getPortfolioValue() const;
-    const Portfolio& getPortfolio() const;
-    
-    // Other methods...
+    // Constructor takes a configuration object
+    explicit BacktestEngine(const Config& cfg);
+
+    // --- Setup ---
+    bool loadData();                              // Load data based on config settings
+    void setStrategy(std::unique_ptr<Strategy> strat); // Set the strategy to use
+
+    // --- Execution ---
+    void run();                                   // Run the backtest
 };</code></pre>
 
             <h3>Strategy Base Class</h3>
             <p>Base class for implementing trading strategies.</p>
             <pre><code>class Strategy {
+protected:
+    Broker* broker;                 // Non-owning pointer to the broker instance
+    const std::vector<Bar>* data;   // Non-owning pointer to the historical data
+    std::string dataName;           // Name of the data series (e.g., "USDJPY")
+    Config* config;                 // Non-owning pointer to configuration settings
+
 public:
-    // Constructor and destructor
-    Strategy();
-    virtual ~Strategy();
-    
-    // Strategy lifecycle methods
-    virtual void initialize();
-    virtual void onBar(const Bar& bar) = 0;
-    virtual void onOrderFilled(const Order& order);
-    virtual void finalize();
-    
-    // Trading actions
-    void buy(int quantity, const std::string& symbol, double limitPrice = 0.0);
-    void sell(int quantity, const std::string& symbol, double limitPrice = 0.0);
-    void buyToCover(int quantity, const std::string& symbol, double limitPrice = 0.0);
-    void sellShort(int quantity, const std::string& symbol, double limitPrice = 0.0);
-    void cancelOrder(const std::string& orderId);
-    
-    // Position and portfolio information
-    Position getPosition(const std::string& symbol) const;
-    double getPortfolioValue() const;
-    double getCash() const;
-    
-    // Other methods...
+    virtual std::string getName() const;
+    Strategy();                     // Default constructor
+    virtual ~Strategy() = default;  // Virtual destructor
+
+    // --- Setup Methods (called by Engine) ---
+    virtual void setBroker(Broker* b);
+    virtual void setData(const std::vector<Bar>* d, const std::string& name);
+    virtual void setConfig(Config* cfg);
+
+    // --- Core Strategy Lifecycle Methods (to be overridden) ---
+    virtual void init() = 0;                                // Called before backtest
+    virtual void next(const Bar& currentBar, size_t currentBarIndex, const double currentPrice) = 0;
+    virtual void stop() = 0;                                // Called after backtest
+    virtual void notifyOrder(const Order& order) = 0;       // Called when order status changes
 };</code></pre>
 
-            <h3>Bar Class</h3>
-            <p>Represents a single price bar (OHLCV data).</p>
-            <pre><code>class Bar {
-public:
-    // Constructors
-    Bar();
-    Bar(const std::string& symbol, const std::string& timestamp,
-        double open, double high, double low, double close, double volume);
-    
-    // Data members
-    std::string symbol;
-    std::string timestamp;
-    double open;
-    double high;
-    double low;
-    double close;
-    double volume;
-    
-    // Utility methods
-    bool isValid() const;
-    std::string toString() const;
+            <h3>Bar Structure</h3>
+            <p>Represents a single price bar with market data.</p>
+            <pre><code>struct Bar {
+    std::chrono::system_clock::time_point timestamp{};  // Timestamp for the bar
+    std::vector<std::string> columnNames;               // Names of the data columns
+    std::vector<double> columns;                        // Values for each column
 };</code></pre>
 
-            <h3>Order Class</h3>
+            <h3>Order Structure</h3>
             <p>Represents a trading order.</p>
-            <pre><code>class Order {
-public:
-    // Order types
-    enum class Type {
-        MARKET,
-        LIMIT,
-        STOP,
-        STOP_LIMIT
-    };
+            <pre><code>// Order type enumeration
+enum class OrderType {
+    BUY,
+    SELL
+};
+
+// Order status enumeration
+enum class OrderStatus {
+    CREATED,    // Initial state before broker processing
+    SUBMITTED,  // Handed to broker simulation
+    ACCEPTED,   // Basic checks passed (e.g., positive size)
+    FILLED,     // Successfully executed
+    CLOSED,     // Order is closed
+    CANCELLED,  // Order cancelled before filling
+    REJECTED,   // Broker rejected (e.g., insufficient funds/margin)
+    MARGIN      // Rejected specifically due to margin
+};
+
+// Order reason enumeration
+enum class OrderReason {
+    ENTRY_SIGNAL,
+    EXIT_SIGNAL,
+    STOP_LOSS,
+    TAKE_PROFIT,
+    BANKRUPTCY_PROTECTION,
+    MANUAL_CLOSE
+};
+
+struct Order {
+    int id = -1;                                     // Unique ID assigned by Broker
+    OrderType type = OrderType::BUY;                 // Order type (BUY/SELL)
+    OrderStatus status = OrderStatus::CREATED;       // Current status
+    OrderReason reason = OrderReason::ENTRY_SIGNAL;  // Reason for the order
+    std::string symbol = "";                         // Trading symbol (e.g., "USDJPY")
+    double requestedSize = 0.0;                      // Size requested
+    double filledSize = 0.0;                         // Size actually filled
+    double requestedPrice = 0.0;                     // Requested price
+    double filledPrice = 0.0;                        // Actual fill price
+    double commission = 0.0;                         // Commission charged
+    double takeProfit = 0.0;                         // Take profit level
+    double stopLoss = 0.0;                           // Stop loss level
+    std::chrono::system_clock::time_point creationTime{};
+    std::chrono::system_clock::time_point executionTime{};
     
-    // Order sides
-    enum class Side {
-        BUY,
-        SELL,
-        BUY_TO_COVER,
-        SELL_SHORT
-    };
-    
-    // Order status
-    enum class Status {
-        PENDING,
-        FILLED,
-        PARTIALLY_FILLED,
-        CANCELED,
-        REJECTED
-    };
-    
-    // Constructors
-    Order();
-    Order(const std::string& id, const std::string& symbol, Type type, Side side,
-          int quantity, double price = 0.0, double stopPrice = 0.0);
-    
-    // Data members
-    std::string id;
-    std::string symbol;
-    Type type;
-    Side side;
-    int quantity;
-    int filledQuantity;
-    double price;
-    double stopPrice;
-    double averageFillPrice;
-    Status status;
-    std::string timestamp;
-    
-    // Other methods...
+    // Helper to check if order is in a final state
+    bool isClosed() const;
 };</code></pre>
 
-            <h3>Position Class</h3>
-            <p>Represents a position in a security.</p>
-            <pre><code>class Position {
+            <h3>Position Structure</h3>
+            <p>Represents an open trading position.</p>
+            <pre><code>// Note: This class definition is inferred from usage, actual implementation may vary
+class Position {
 public:
-    // Constructors
     Position();
-    Position(const std::string& symbol, int quantity, double averagePrice);
+    Position(const std::string& sym, double sz, double price);
     
     // Data members
-    std::string symbol;
-    int quantity;
-    double averagePrice;
-    double marketPrice;
+    std::string symbol;     // Trading symbol
+    double size;            // Position size (positive for long, negative for short)
+    double entryPrice;      // Average entry price
+    double stopLoss;        // Stop loss level (0 if not set)
+    double takeProfit;      // Take profit level (0 if not set)
     
-    // Calculated properties
-    double getMarketValue() const;
-    double getUnrealizedPnL() const;
-    double getRealizedPnL() const;
-    
-    // Position management
-    void addShares(int quantity, double price);
-    void removeShares(int quantity, double price);
-    
-    // Other methods...
+    // Member functions
+    double getUnrealizedPnL(double currentPrice) const;
+    void update(double additionalSize, double price);
 };</code></pre>
 
-            <h3>BacktestResults Class</h3>
-            <p>Contains the results of a backtest.</p>
-            <pre><code>class BacktestResults {
+            <h3>Broker Class</h3>
+            <p>Manages orders and positions during the backtest.</p>
+            <pre><code>class Broker {
 public:
     // Constructors
-    BacktestResults();
+    Broker();
+    Broker(double initialCash, double lev, double commRate);
+    ~Broker() = default;
+
+    // Set the strategy instance (called by engine)
+    void setStrategy(Strategy* strat);
+
+    // --- Account Info ---
+    double getStartingCash() const;
+    double getCash() const;
+    double getValue(const std::map<std::string, double>& currentPrices);
+    double getValue(const double currentPrices);
+
+    // --- Order Management ---
+    int submitOrder(Order order);
+    void processOrders(const Bar& currentBar);
+
+    // --- Position Info ---
+    const Position* getPosition(const std::string& symbol) const;
+    const std::map<std::string, Position>& getAllPositions() const;
+
+    // --- History ---
+    const std::vector<Order>& getOrderHistory() const;
+};</code></pre>
+
+            <h3>Config Class</h3>
+            <p>Handles configuration loading and access.</p>
+            <pre><code>// Note: Implementation inferred from usage in code
+class Config {
+public:
+    Config();
     
-    // Data members
-    std::vector<double> equityCurve;
-    std::vector<std::string> timestamps;
-    std::vector<Trade> trades;
+    // Load config from file
+    bool loadFromFile(const std::string& filename);
     
-    // Performance metrics
+    // Access config values
+    template <typename T>
+    T get(const std::string& path, const T& defaultValue) const;
+    
+    // Get nested config values
+    template <typename T>
+    T getNested(const std::string& path, const T& defaultValue) const;
+    
+    // Set config values
+    template <typename T>
+    void set(const std::string& path, const T& value);
+};</code></pre>
+
+            <h3>ModelInterface Class</h3>
+            <p>Base interface for ML model integration.</p>
+            <pre><code>// Note: This is a work in progress feature
+class ModelInterface {
+public:
+    virtual ~ModelInterface() = default;
+    
+    // Load a model from the specified path
+    virtual bool LoadModel(const std::string& modelPath) = 0;
+    
+    // Run inference on input data
+    virtual std::vector<float> Predict(const std::vector<float>& inputData, 
+                                     const std::vector<int64_t>& inputShape) = 0;
+    
+    // Print information about the loaded model
+    virtual void PrintModelInfo() = 0;
+};</code></pre>
+
+            <h3>OnnxModelInterface Class</h3>
+            <p>Implementation of ModelInterface using ONNX Runtime.</p>
+            <pre><code>// Note: Work in progress based on the header file
+class OnnxModelInterface : public ModelInterface {
+public:
+    OnnxModelInterface();
+    ~OnnxModelInterface() override;
+    
+    bool LoadModel(const std::string& modelPath);
+    std::vector<float> Predict(const std::vector<float>& inputData, 
+                             const std::vector<int64_t>& inputShape) override;
+    void PrintModelInfo() override;
+};</code></pre>
+
+            <h3>TradingMetrics Class</h3>
+            <p>Calculates and provides access to trading performance metrics.</p>
+            <pre><code>// Note: Implementation inferred from usage
+class TradingMetrics {
+public:
+    TradingMetrics();
+    
+    // Add a new portfolio value point
+    void addValue(double portfolioValue, const std::string& timestamp);
+    
+    // Add a trade from order information
+    void addTrade(const Order& order);
+    
+    // Calculate and return metrics
     double getTotalReturn() const;
-    double getAnnualizedReturn() const;
     double getSharpeRatio() const;
     double getMaxDrawdown() const;
+    int getTradeCount() const;
     double getWinRate() const;
     double getProfitFactor() const;
-    
-    // Reporting
-    void printSummary() const;
-    void saveToFile(const std::string& filepath) const;
-    
-    // Other methods...
-};</code></pre>
-
-            <h3>ONNXModel Class</h3>
-            <p>Interface for using ONNX Runtime models.</p>
-            <pre><code>class ONNXModel {
-public:
-    // Constructors
-    ONNXModel(const std::string& modelPath);
-    
-    // Inference methods
-    std::vector<float> predict(const std::vector<float>& input);
-    std::vector<float> predict(const float* input, size_t inputSize);
-    
-    // Model information
-    std::vector<std::string> getInputNames() const;
-    std::vector<std::string> getOutputNames() const;
-    std::vector<std::vector<int64_t>> getInputShapes() const;
-    std::vector<std::vector<int64_t>> getOutputShapes() const;
-    
-    // Other methods...
 };</code></pre>
         </section>
 
         <section class="container">
             <h2>Python API Reference</h2>
             <p>
-                This section provides detailed documentation for the Python API of CppBacktester.
+                This section provides detailed documentation for the Python bindings of CppBacktester.
             </p>
 
-            <h3>Backtester Class</h3>
-            <p>The main class for running backtests.</p>
-            <pre><code>class Backtester:
-    """Main class for running backtests."""
-    
-    def __init__(self, config=None):
-        """Initialize a backtester instance.
-        
-        Args:
-            config: Optional configuration dictionary
-        """
-        pass
-    
-    def set_start_date(self, date):
-        """Set the start date for the backtest.
-        
-        Args:
-            date: Start date string in 'YYYY-MM-DD' format
-        """
-        pass
-    
-    def set_end_date(self, date):
-        """Set the end date for the backtest.
-        
-        Args:
-            date: End date string in 'YYYY-MM-DD' format
-        """
-        pass
-    
-    def set_initial_capital(self, capital):
-        """Set the initial capital for the backtest.
-        
-        Args:
-            capital: Initial capital amount
-        """
-        pass
-    
-    def set_commission_model(self, model):
-        """Set the commission model for the backtest.
-        
-        Args:
-            model: CommissionModel instance
-        """
-        pass
-    
-    def set_slippage_model(self, model):
-        """Set the slippage model for the backtest.
-        
-        Args:
-            model: SlippageModel instance
-        """
-        pass
-    
-    def load_data(self, data):
-        """Load data for the backtest.
-        
-        Args:
-            data: Either a file path or a pandas DataFrame
-        """
-        pass
-    
-    def set_strategy(self, strategy):
-        """Set the strategy for the backtest.
-        
-        Args:
-            strategy: Strategy instance
-        """
-        pass
-    
-    def run(self):
-        """Run the backtest.
-        
-        Returns:
-            BacktestResults instance
-        """
-        pass
-    
-    def get_portfolio_value(self):
-        """Get the current portfolio value.
-        
-        Returns:
-            Current portfolio value
-        """
-        pass</code></pre>
+            <h3>Module Overview</h3>
+            <p>The Python module <code>cppbacktester_py</code> exposes the following classes and functions:</p>
 
-            <h3>Strategy Class</h3>
-            <p>Base class for implementing trading strategies.</p>
-            <pre><code>class Strategy:
-    """Base class for implementing trading strategies."""
-    
-    def __init__(self):
-        """Initialize a strategy instance."""
-        pass
-    
-    def initialize(self):
-        """Initialize the strategy. Called once at the start of the backtest."""
-        pass
-    
-    def on_bar(self, bar):
-        """Process a new bar.
-        
-        Args:
-            bar: Bar instance
-        """
-        pass
-    
-    def on_order_filled(self, order):
-        """Handle a filled order.
-        
-        Args:
-            order: Order instance
-        """
-        pass
-    
-    def finalize(self):
-        """Finalize the strategy. Called once at the end of the backtest."""
-        pass
-    
-    def buy(self, quantity, symbol, limit_price=0.0):
-        """Buy a security.
-        
-        Args:
-            quantity: Number of shares to buy
-            symbol: Security symbol
-            limit_price: Optional limit price (0 for market order)
-        
-        Returns:
-            Order ID
-        """
-        pass
-    
-    def sell(self, quantity, symbol, limit_price=0.0):
-        """Sell a security.
-        
-        Args:
-            quantity: Number of shares to sell
-            symbol: Security symbol
-            limit_price: Optional limit price (0 for market order)
-        
-        Returns:
-            Order ID
-        """
-        pass
-    
-    def buy_to_cover(self, quantity, symbol, limit_price=0.0):
-        """Cover a short position.
-        
-        Args:
-            quantity: Number of shares to cover
-            symbol: Security symbol
-            limit_price: Optional limit price (0 for market order)
-        
-        Returns:
-            Order ID
-        """
-        pass
-    
-    def sell_short(self, quantity, symbol, limit_price=0.0):
-        """Short sell a security.
-        
-        Args:
-            quantity: Number of shares to short
-            symbol: Security symbol
-            limit_price: Optional limit price (0 for market order)
-        
-        Returns:
-            Order ID
-        """
-        pass
-    
-    def cancel_order(self, order_id):
-        """Cancel an order.
-        
-        Args:
-            order_id: Order ID to cancel
-        
-        Returns:
-            True if successful, False otherwise
-        """
-        pass
-    
-    def get_position(self, symbol):
-        """Get the current position for a symbol.
-        
-        Args:
-            symbol: Security symbol
-        
-        Returns:
-            Position instance
-        """
-        pass
-    
-    def get_portfolio_value(self):
-        """Get the current portfolio value.
-        
-        Returns:
-            Current portfolio value
-        """
-        pass
-    
-    def get_cash(self):
-        """Get the current cash balance.
-        
-        Returns:
-            Current cash balance
-        """
-        pass</code></pre>
+            <h3>Global Functions</h3>
+            <pre><code># Run the main function (equivalent to the C++ executable)
+cppbacktester_py.main()
 
-            <h3>BacktestResults Class</h3>
-            <p>Contains the results of a backtest.</p>
-            <pre><code>class BacktestResults:
-    """Contains the results of a backtest."""
-    
-    def __init__(self):
-        """Initialize a BacktestResults instance."""
-        pass
-    
-    def get_total_return(self):
-        """Get the total return of the backtest.
-        
-        Returns:
-            Total return as a decimal (e.g., 0.15 for 15%)
-        """
-        pass
-    
-    def get_annualized_return(self):
-        """Get the annualized return of the backtest.
-        
-        Returns:
-            Annualized return as a decimal
-        """
-        pass
-    
-    def get_sharpe_ratio(self):
-        """Get the Sharpe ratio of the backtest.
-        
-        Returns:
-            Sharpe ratio
-        """
-        pass
-    
-    def get_max_drawdown(self):
-        """Get the maximum drawdown of the backtest.
-        
-        Returns:
-            Maximum drawdown as a decimal
-        """
-        pass
-    
-    def get_win_rate(self):
-        """Get the win rate of the backtest.
-        
-        Returns:
-            Win rate as a decimal
-        """
-        pass
-    
-    def get_profit_factor(self):
-        """Get the profit factor of the backtest.
-        
-        Returns:
-            Profit factor
-        """
-        pass
-    
-    def print_summary(self):
-        """Print a summary of the backtest results."""
-        pass
-    
-    def plot_equity_curve(self):
-        """Plot the equity curve of the backtest."""
-        pass
-    
-    def to_dataframe(self):
-        """Convert the results to a pandas DataFrame.
-        
-        Returns:
-            pandas DataFrame
-        """
-        pass
-    
-    def save_to_file(self, filepath):
-        """Save the results to a file.
-        
-        Args:
-            filepath: Path to save the results
-        """
-        pass</code></pre>
+# Load a Python pickle model from a file
+model = cppbacktester_py.load_model(path)</code></pre>
 
-            <h3>ONNXModel Class</h3>
-            <p>Interface for using ONNX Runtime models.</p>
-            <pre><code>class ONNXModel:
-    """Interface for using ONNX Runtime models."""
+            <h3>Bar Class</h3>
+            <p>Represents a single price bar with market data.</p>
+            <pre><code>class cppbacktester_py.Bar:
+    """Represents a time period's market data bar."""
     
-    def __init__(self, model_path):
-        """Initialize an ONNXModel instance.
+    # Properties
+    timestamp   # datetime object representing the bar's time
+    columns     # List of numeric values for the bar's data columns</code></pre>
+
+            <h3>Config Class</h3>
+            <p>Handles configuration loading and access.</p>
+            <pre><code>class cppbacktester_py.Config:
+    """Configuration class for the backtester."""
+    
+    def load_from_file(filename):
+        """Load configuration from a JSON file.
         
         Args:
-            model_path: Path to the ONNX model file
-        """
-        pass
+            filename (str): Path to the JSON config file
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """</code></pre>
+
+            <h3>DataLoader Class</h3>
+            <p>Handles loading market data from various sources.</p>
+            <pre><code>class cppbacktester_py.DataLoader:
+    """Load market data for backtesting."""
     
-    def predict(self, input_data):
-        """Run inference on the model.
+    def __init__(config):
+        """Initialize the DataLoader.
         
         Args:
-            input_data: Input data as a numpy array or list
-        
-        Returns:
-            Prediction as a numpy array
+            config (Config): Configuration object
         """
-        pass
     
-    def get_input_names(self):
-        """Get the input names of the model.
+    def load_data(use_partial=False, partial_percent=100.0):
+        """Load data as specified in the config.
         
+        Args:
+            use_partial (bool): Whether to use partial data loading
+            partial_percent (float): Percentage of data to load if partial
+            
         Returns:
-            List of input names
-        """
-        pass
-    
-    def get_output_names(self):
-        """Get the output names of the model.
-        
-        Returns:
-            List of output names
-        """
-        pass
-    
-    def get_input_shapes(self):
-        """Get the input shapes of the model.
-        
-        Returns:
-            List of input shapes
-        """
-        pass
-    
-    def get_output_shapes(self):
-        """Get the output shapes of the model.
-        
-        Returns:
-            List of output shapes
-        """
-        pass</code></pre>
+            list: List of Bar objects
+        """</code></pre>
+
+            <h3>Future Python Functionality</h3>
+            <p>The following Python functionality is currently in development:</p>
+            <ul>
+                <li>Complete Strategy class bindings for custom Python strategies</li>
+                <li>Support for ONNX and HMM models in Python</li>
+                <li>Direct pandas DataFrame integration</li>
+                <li>Visualization tools for backtesting results</li>
+                <li>Comprehensive reporting features</li>
+            </ul>
+            
+            <p>The Python API is actively being expanded. Check the repository for the latest updates and additional functionality.</p>
         </section>
     </main>
 
     <footer>
-        <p>&copy; 2023 CppBacktester Project. All rights reserved.</p>
+        <p>&copy; 2025 CppBacktester Project. All rights reserved.</p>
     </footer>
 </body>
 </html>

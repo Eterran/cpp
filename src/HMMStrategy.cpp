@@ -67,10 +67,9 @@ void HMMStrategy::init() {
 }
 
 void HMMStrategy::next(const Bar& currentBar, size_t currentBarIndex, const double /*currentPrices*/) {
-    // Store current bar in our global history
+    // Store current bar in global history
     allBarHistory_.push_back(currentBar);
     
-    // We need at least a reasonable number of bars to make a prediction
     const size_t MIN_HISTORY = 30;
     if (allBarHistory_.size() < MIN_HISTORY) {
         Utils::logMessage("HMMStrategy: Not enough bars for prediction yet, have " + 
@@ -79,7 +78,6 @@ void HMMStrategy::next(const Bar& currentBar, size_t currentBarIndex, const doub
         return;
     }
     
-    // We'll now use a larger window size since that's what gives us good regime variability
     // The window size needs to be large enough to capture the regime transitions
     const size_t WINDOW_SIZE = 100;
     size_t startIdx = allBarHistory_.size() <= WINDOW_SIZE ? 0 : allBarHistory_.size() - WINDOW_SIZE;
@@ -204,5 +202,5 @@ void HMMStrategy::notifyOrder(const Order& /*order*/) {
 }
 
 void HMMStrategy::handlePrediction(int regime){
-    Utils::logMessage("Current Regime:" + std::to_string(prediction));
+    Utils::logMessage("Current Regime:" + std::to_string(regime));
 }

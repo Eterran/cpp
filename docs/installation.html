@@ -94,24 +94,35 @@ build.bat</code></pre>
             <h2>Output Directory Structure</h2>
             <p>After building, the output files will be organized as follows:</p>
             <pre><code>build/
-├── Release/                  # Release build output
-│   ├── CppBacktester.exe     # C++ executable
-│   └── CppBacktester.dll     # Python module DLL
-├── Debug/                    # Debug build output
-│   ├── CppBacktester.exe     # C++ executable
-│   └── CppBacktester.dll     # Python module DLL
-└── ...                       # Other build files</code></pre>
+├── output/                                          # build output
+│   ├── bin/               
+│   │    ├── backtest_executable.exe                 # C++ executable
+│   │    └── .dlls                                   # DLLs for the executable
+│   └── lib/              
+│        ├── cppbacktester_py.cp312-win_amd64.pyd    # Python extension module
+│        └──
+└── ...                                              # Other build files</code></pre>
         </section>
 
         <section class="container">
-            <h2>Python Module Installation</h2>
-            <p>If you've built the Python module, you can install it directly from the build directory:</p>
-            <pre><code>pip install -e .</code></pre>
+            <h2>Python Dependencies</h2>
+            <p>CppBacktester requires several Python packages when using the Python module or running the auxiliary scripts. You can install all required dependencies using pip:</p>
             
-            <p>Or you can copy the built DLL to your Python site-packages directory.</p>
+            <h3>Step 1: Navigate to the Project Directory</h3>
+            <pre><code>cd path/to/CppBacktester</code></pre>
             
-            <div class="warning">
-                <strong>Warning:</strong> Make sure the Python version you use for installation matches the one used during the build process.
+            <h3>Step 2: Install Requirements</h3>
+            <pre><code>pip install -r requirements.txt</code></pre>
+            
+            <p>This will install all the necessary Python packages listed in the requirements.txt file, including:</p>
+            <ul>
+                <li>NumPy - For numerical computations</li>
+                <li>Pandas - For data manipulation</li>
+                <li>Additional packages required by the HMM and ML strategies</li>
+            </ul>
+            
+            <div class="note">
+                <strong>Note:</strong> It's recommended to use a virtual environment to avoid conflicts with other Python packages.
             </div>
         </section>
 

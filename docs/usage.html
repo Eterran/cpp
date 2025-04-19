@@ -26,251 +26,296 @@
         <section class="container">
             <h2>Introduction</h2>
             <p>
-                This guide explains how to use CppBacktester for backtesting trading strategies. CppBacktester provides
-                both a C++ API for maximum performance and a Python API for ease of use and integration with the Python
-                data science ecosystem.
+                This guide explains how to use CppBacktester for backtesting trading strategies. CppBacktester is a high-performance
+                backtesting framework with both C++ and Python interfaces, designed to work with machine learning models including 
+                ONNX, XGBoost, and HMM (Hidden Markov Models) for market regime detection.
             </p>
+        </section>
+
+        <section class="container">
+            <h2>Configuration</h2>
+            
+            <h3>Using config.json</h3>
+            <p>CppBacktester is primarily configured through the <code>config.json</code> file in the project root. This file controls 
+            all aspects of the backtesting process including:</p>
+            
+            <ul>
+                <li>Broker settings (commission, leverage, starting cash)</li>
+                <li>Data source configuration (CSV or API)</li> 
+                <li>Strategy parameters</li>
+                <li>Model paths and hyperparameters</li>
+            </ul>
+
+            <p>Example of a minimal config.json:</p>
+            <pre><code>{
+    "Broker": {
+        "COMMISSION_RATE": 0.06,
+        "LEVERAGE": 100.0,
+        "STARTING_CASH": 100000.0
+    },
+    "Data": {
+        "CSV_Close_Col": 1,
+        "CSV_Columns": [
+            {
+                "index": 0,
+                "name": "timestamp",
+                "type": "Timestamp"
+            },
+            {
+                "index": 1,
+                "name": "close",
+                "type": "Close"
+            }
+        ],
+        "CSV_Delimiter": ",",
+        "CSV_Has_Header": true,
+        "CSV_Timestamp_Col": 0,
+        "CSV_Timestamp_Format": "%Y-%m-%d %H:%M:%S",
+        "INPUT_CSV_PATH": "path/to/data.csv",
+        "SourceType": "CSV"
+    },
+    "Strategy": {
+        "StopLossPips": 50.0,
+        "TakeProfitPips": 50.0,
+        "Type": "Random"
+    }
+}</code></pre>
         </section>
 
         <section class="container">
             <h2>C++ Interface</h2>
             
-            <h3>Basic Usage</h3>
-            <p>To use CppBacktester in a C++ application, include the main header file and create a backtester instance:</p>
-            <pre><code>#include "CppBacktester.h"
+            <h3>Running the C++ Executable</h3>
+            <p>After building the project, you can run the backtest executable directly:</p>
+            <pre><code>cd build/output/bin
+backtest_executable.exe</code></pre>
 
-int main() {
-    // Create a backtester instance
-    CppBacktester::Backtester backtester;
-    
-    // Configure the backtester
-    backtester.setStartDate("2020-01-01");
-    backtester.setEndDate("2020-12-31");
-    backtester.setInitialCapital(100000.0);
-    
-    // Load data
-    backtester.loadData("path/to/data.csv");
-    
-    // Define a strategy
-    auto strategy = std::make_shared<MyStrategy>();
-    backtester.setStrategy(strategy);
-    
-    // Run the backtest
-    auto results = backtester.run();
-    
-    // Analyze results
-    results.printSummary();
-    
-    return 0;
-}</code></pre>
+            <p>The executable will:</p>
+            <ol>
+                <li>Load settings from <code>config.json</code></li>
+                <li>Create a backtest engine with the specified configuration</li>
+                <li>Load market data from the specified source</li>
+                <li>Initialize the selected strategy based on the "Type" field in config</li>
+                <li>Run the backtest</li>
+                <li>Display results</li>
+            </ol>
 
             <h3>Creating Custom Strategies</h3>
-            <p>To create a custom strategy, inherit from the <code>Strategy</code> base class and implement the required methods:</p>
+            <p>To implement a custom strategy, create a new class that inherits from the <code>Strategy</code> base class:</p>
             <pre><code>#include "Strategy.h"
+#include "Order.h"
+#include "Bar.h"
 
-class MyStrategy : public CppBacktester::Strategy {
+class MyCustomStrategy : public Strategy {
 public:
-    MyStrategy() {}
-    
-    void initialize() override {
-        // Initialize strategy parameters
+    MyCustomStrategy() : Strategy("MyCustom") {}
+
+    virtual void initialize() override {
+        // Initialize strategy parameters, indicators, etc.
     }
-    
-    void onBar(const Bar& bar) override {
-        // Strategy logic for each bar
+
+    virtual void processBar(const Bar& bar) override {
+        // Your strategy logic goes here
         if (someCondition) {
-            buy(100, bar.symbol);
-        } else if (otherCondition) {
-            sell(100, bar.symbol);
+            // Create a buy order
+            Order buyOrder;
+            buyOrder.type = OrderType::BUY;
+            buyOrder.symbol = bar.symbol;
+            buyOrder.price = bar.close;
+            buyOrder.size = 1.0;
+            buyOrder.stopLoss = bar.close - stopLossPips_;
+            buyOrder.takeProfit = bar.close + takeProfitPips_;
+
+            // Submit the order to the broker
+            submitOrder(buyOrder);
         }
     }
-    
-    void onOrderFilled(const Order& order) override {
-        // Handle filled orders
-    }
-    
-    void finalize() override {
+
+    virtual void finalize() override {
         // Clean up resources
     }
+
+private:
+    double stopLossPips_ = 50.0;
+    double takeProfitPips_ = 100.0;
 };</code></pre>
+
+            <p>To use your custom strategy, you would need to modify <code>main.cpp</code> to include your strategy class and add a condition to create it based on your config setting.</p>
         </section>
 
         <section class="container">
             <h2>Python Interface</h2>
             
             <h3>Basic Usage</h3>
-            <p>To use CppBacktester in a Python application, import the module and create a backtester instance:</p>
-            <pre><code>import cppbacktester as cb
+            <p>The Python module <code>cppbacktester_py.pyd</code> exposes the core functionality of the C++ library:</p>
+            <pre><code>import cppbacktester_py as cb
 import pandas as pd
 
+# Create a config object (or load from a json file)
+config = cb.Config()
+config.set_broker_param("STARTING_CASH", 100000.0)
+config.set_broker_param("LEVERAGE", 100.0)
+config.set_broker_param("COMMISSION_RATE", 0.06)
+
 # Create a backtester instance
-backtester = cb.Backtester()
+engine = cb.BacktestEngine(config)
 
-# Configure the backtester
-backtester.set_start_date("2020-01-01")
-backtester.set_end_date("2020-12-31")
-backtester.set_initial_capital(100000.0)
+# Load data - either from DataFrame or CSV
+data = pd.read_csv("data/market_data.csv")
+engine.load_dataframe(data, {
+    'timestamp_col': 0,
+    'timestamp_format': '%Y-%m-%d %H:%M:%S',
+    'close_col': 1,
+    'has_header': True
+})
 
-# Load data
-data = pd.read_csv("path/to/data.csv")
-backtester.load_data(data)
+# Create a strategy (built-in or custom)
+strategy = cb.RandomStrategy()  # Or ML, Benchmark, etc.
+engine.set_strategy(strategy)
 
-# Define a strategy
-class MyStrategy(cb.Strategy):
+# Run the backtest
+engine.run()
+
+# Get results
+metrics = engine.get_metrics()
+print(f"Total Return: {metrics.total_return:.2f}%")
+print(f"Sharpe Ratio: {metrics.sharpe_ratio:.2f}")</code></pre>
+
+            <h3>Creating Custom Python Strategies</h3>
+            <p>You can create custom strategies in Python by subclassing from the Strategy base class:</p>
+            <pre><code>import cppbacktester_py as cb
+
+class MyPythonStrategy(cb.Strategy):
+    def __init__(self):
+        super().__init__("MyPythonStrategy")
+        self.stop_loss_pips = 50.0
+        self.take_profit_pips = 100.0
+        
     def initialize(self):
-        # Initialize strategy parameters
+        # Set up strategy parameters
         pass
         
-    def on_bar(self, bar):
-        # Strategy logic for each bar
-        if some_condition:
-            self.buy(100, bar.symbol)
-        elif other_condition:
-            self.sell(100, bar.symbol)
-    
-    def on_order_filled(self, order):
-        # Handle filled orders
-        pass
+    def process_bar(self, bar):
+        # Implement your strategy logic
+        if bar.close > self.last_close:
+            # Create buy order
+            order = cb.Order()
+            order.type = cb.OrderType.BUY
+            order.symbol = bar.symbol
+            order.price = bar.close
+            order.size = 1.0
+            order.stop_loss = bar.close - self.stop_loss_pips
+            order.take_profit = bar.close + self.take_profit_pips
+            self.submit_order(order)
+        
+        # Store current close for next comparison
+        self.last_close = bar.close
         
     def finalize(self):
         # Clean up resources
-        pass
-
-# Set the strategy
-strategy = MyStrategy()
-backtester.set_strategy(strategy)
-
-# Run the backtest
-results = backtester.run()
-
-# Analyze results
-results.print_summary()
-results.plot_equity_curve()</code></pre>
-
-            <h3>Integration with NumPy and Pandas</h3>
-            <p>CppBacktester's Python interface seamlessly integrates with NumPy and Pandas:</p>
-            <pre><code>import cppbacktester as cb
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-
-# Load data with pandas
-data = pd.read_csv("path/to/data.csv")
-
-# Create a backtester instance
-backtester = cb.Backtester()
-backtester.load_data(data)
-
-# Run the backtest
-results = backtester.run()
-
-# Convert results to pandas DataFrame
-results_df = results.to_dataframe()
-
-# Analyze with pandas
-daily_returns = results_df['equity'].pct_change()
-annual_return = daily_returns.mean() * 252
-annual_volatility = daily_returns.std() * np.sqrt(252)
-sharpe_ratio = annual_return / annual_volatility
-
-# Plot results
-plt.figure(figsize=(12, 6))
-results_df['equity'].plot()
-plt.title('Equity Curve')
-plt.xlabel('Date')
-plt.ylabel('Equity')
-plt.grid(True)
-plt.show()</code></pre>
+        pass</code></pre>
         </section>
 
         <section class="container">
-            <h2>Using ONNX Models</h2>
-            <p>CppBacktester supports ONNX Runtime for integrating machine learning models into your strategies:</p>
+            <h2>Working with Machine Learning Models</h2>
             
-            <h3>C++ Interface</h3>
-            <pre><code>#include "CppBacktester.h"
-#include "ONNXModel.h"
+            <h3>Supported Model Types</h3>
+            <p>CppBacktester currently supports the following model types:</p>
+            <ul>
+                <li><strong>ONNX models</strong> - Cross-platform ML model format</li>
+                <li><strong>XGBoost models</strong> - Gradient boosting library</li>
+                <li><strong>HMM models</strong> - Hidden Markov Models for regime detection</li>
+            </ul>
 
-class MLStrategy : public CppBacktester::Strategy {
-private:
-    std::unique_ptr<CppBacktester::ONNXModel> model_;
-    
-public:
-    void initialize() override {
-        // Load ONNX model
-        model_ = std::make_unique<CppBacktester::ONNXModel>("path/to/model.onnx");
+            <h3>HMM Strategy Example</h3>
+            <p>The HMMStrategy class demonstrates how to use a Hidden Markov Model to detect market regimes and then apply regime-specific models for trading signals:</p>
+            <pre><code># Using HMM strategy in Python
+import cppbacktester_py as cb
+
+# Create and configure the engine
+config = cb.Config()
+config.load_from_file("config.json")
+
+# For HMMStrategy, ensure your config.json has:
+# - RegimeDetection section with model_path
+# - Strategy.RegimeModelOnnxPaths mapping regimes to models
+
+engine = cb.BacktestEngine(config)
+engine.load_data()
+
+# Use HMM Strategy
+strategy = cb.HMMStrategy()
+engine.set_strategy(strategy)
+
+# Run backtest
+engine.run()
+metrics = engine.get_metrics()
+print(f"Sharpe: {metrics.sharpe_ratio:.2f}")</code></pre>
+        </section>
+        
+        <section class="container">
+            <h2>Data Format</h2>
+            <p>CppBacktester expects input data in a specific format:</p>
+            
+            <h3>CSV Format</h3>
+            <p>For CSV files, you need to define the column structure in the config:</p>
+            <pre><code>"CSV_Columns": [
+    {
+        "index": 0,
+        "name": "timestamp",
+        "type": "Timestamp"
+    },
+    {
+        "index": 1,
+        "name": "open",
+        "type": "Open"
+    },
+    {
+        "index": 2,
+        "name": "high",
+        "type": "High"
+    },
+    {
+        "index": 3,
+        "name": "low",
+        "type": "Low"
+    },
+    {
+        "index": 4,
+        "name": "close",
+        "type": "Close"
+    },
+    {
+        "index": 5,
+        "name": "volume",
+        "type": "Volume"
     }
-    
-    void onBar(const Bar& bar) override {
-        // Prepare input data
-        std::vector<float> features = prepareFeatures(bar);
-        
-        // Run inference
-        auto prediction = model_->predict(features);
-        
-        // Make trading decisions based on prediction
-        if (prediction[0] > 0.7) {
-            buy(100, bar.symbol);
-        } else if (prediction[0] < 0.3) {
-            sell(100, bar.symbol);
-        }
-    }
-    
-    // Other methods...
-};</code></pre>
+]</code></pre>
 
-            <h3>Python Interface</h3>
-            <pre><code>import cppbacktester as cb
-import numpy as np
-
-class MLStrategy(cb.Strategy):
-    def initialize(self):
-        # Load ONNX model
-        self.model = cb.ONNXModel("path/to/model.onnx")
-    
-    def on_bar(self, bar):
-        # Prepare input data
-        features = self.prepare_features(bar)
-        
-        # Run inference
-        prediction = self.model.predict(features)
-        
-        # Make trading decisions based on prediction
-        if prediction[0] > 0.7:
-            self.buy(100, bar.symbol)
-        elif prediction[0] < 0.3:
-            self.sell(100, bar.symbol)
-    
-    def prepare_features(self, bar):
-        # Extract and normalize features
-        features = np.array([
-            bar.open, bar.high, bar.low, bar.close, bar.volume,
-            # Additional features...
-        ], dtype=np.float32)
-        
-        # Normalize features
-        features = (features - self.feature_mean) / self.feature_std
-        
-        return features</code></pre>
+            <p>At a minimum, you need timestamp and close columns. Other columns (open, high, low, volume) are optional but recommended for most strategies.</p>
+            
+            <h3>Additional Data Fields</h3>
+            <p>You can also include additional custom columns by specifying them with a "Feature" type in the CSV_Columns configuration.</p>
+            <div class="note">
+                <strong>Note:</strong> You could add any type of data if you know what you are doing. The Bar obj only contains timestamp as a separate variable, the rest are included in the columns vector.
+            </div>
         </section>
 
         <section class="container">
             <h2>Performance Considerations</h2>
-            <p>
-                For optimal performance, consider the following tips:
-            </p>
+            <p>For optimal performance:</p>
             <ul>
-                <li>Use the C++ API for performance-critical applications</li>
-                <li>Pre-process and normalize data before feeding it to the backtester</li>
-                <li>Use efficient data structures for storing and accessing historical data</li>
-                <li>Minimize memory allocations inside the strategy's onBar method</li>
-                <li>Consider using parallel processing for parameter optimization</li>
+                <li>Use the C++ API directly for maximum speed</li>
+                <li>Preprocess data before loading into the backtester</li>
+                <li>Use ONNX models for inference (faster than direct Python model calls)</li>
+                <li>Configure the number of threads in the Data.Threads setting for parallel processing</li>
+                <li>Consider using the PARTIAL_DATA_PERCENT setting during development to test with a subset of data</li>
             </ul>
         </section>
     </main>
 
     <footer>
-        <p>&copy; 2023 CppBacktester Project. All rights reserved.</p>
+        <p>&copy; 2025 CppBacktester Project. All rights reserved.</p>
     </footer>
 </body>
 </html>

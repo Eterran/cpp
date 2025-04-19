@@ -1,5 +1,9 @@
 # CppBacktester
 
+[Docs][reference]
+
+[reference]: https://eterran.github.io/cpp/
+
 A C++ backtesting framework with Python bindings using pybind11 and ONNX Runtime.
 
 ## Features
@@ -12,11 +16,9 @@ A C++ backtesting framework with Python bindings using pybind11 and ONNX Runtime
 - Strategy class               ✅
 - Run a back test              ✅
 - Calculate metrics            ✅
-- ML Model Loading (in progress)
-- API data fetching (planned)
+- ML Model Loading             ✅
+- API data fetching (not tested)
 
-
-- TODOOOOOOOOOOOOO FORWARD TESTING
 
 ## Building the Project
 
@@ -25,7 +27,7 @@ A C++ backtesting framework with Python bindings using pybind11 and ONNX Runtime
 - CMake 3.12 or higher
 - Visual Studio 2022 (on Windows)
 - Python with development headers (if building Python module)
-- pybind11 (included in third_party)
+- pybind11 (included in third_party github submodule)
 - ONNX Runtime (automatically downloaded if not found)
 - vcpkg (to install curl with openssl)
   vcpkg install curl[core,ssl] --triplet x64-windows-static 

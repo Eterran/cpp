@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Examples - CppBacktester Documentation</title>
+    <title>Program Flow - CppBacktester Documentation</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header>
         <h1>CppBacktester</h1>
-        <p>Examples</p>
+        <p>Program Execution Flow</p>
     </header>
 
     <nav>
@@ -18,610 +18,394 @@
             <li><a href="installation.html">Installation</a></li>
             <li><a href="usage.html">Usage Guide</a></li>
             <li><a href="api.html">API Reference</a></li>
-            <li><a href="examples.html" class="active">Examples</a></li>
+            <li><a href="examples.html" class="active">Program Flow</a></li>
         </ul>
     </nav>
 
     <main>
         <section class="container">
-            <h2>Example Strategies</h2>
+            <h2>Program Execution Flow</h2>
             <p>
-                This section provides example strategies implemented using CppBacktester.
-                These examples demonstrate how to use various features of the framework.
+                This document provides a detailed walkthrough of the execution flow in CppBacktester,
+                from initialization to final results. Understanding this flow will help you better
+                utilize the framework and implement custom strategies.
             </p>
         </section>
 
         <section class="container">
-            <h2>Simple Moving Average Crossover (C++)</h2>
+            <h2>High-Level Overview</h2>
             <p>
-                This example implements a simple moving average crossover strategy in C++.
-                It buys when the short-term moving average crosses above the long-term moving average,
-                and sells when the short-term moving average crosses below the long-term moving average.
+                Here's the high-level flow of a typical backtesting session:
             </p>
-            <pre><code>#include "CppBacktester.h"
-#include &lt;vector&gt;
-#include &lt;string&gt;
-#include &lt;iostream&gt;
+            <ol>
+                <li>Load configuration from config.json</li>
+                <li>Create BacktestEngine with loaded config</li>
+                <li>Load market data via DataLoader</li>
+                <li>Create and initialize a Strategy</li>
+                <li>Run the backtest loop bar by bar</li>
+                <li>Calculate and output performance metrics</li>
+            </ol>
+            <div class="diagram">
+                <img src="assets/flow-diagram.png" alt="Flow Diagram" onerror="this.style.display='none'">
+                <p><em>Note: Flow diagram image not available</em></p>
+            </div>
+        </section>
 
-class MovingAverageCrossover : public CppBacktester::Strategy {
-private:
-    int shortPeriod_;
-    int longPeriod_;
-    std::string symbol_;
-    std::vector&lt;double&gt; prices_;
-    
-public:
-    MovingAverageCrossover(int shortPeriod = 20, int longPeriod = 50, const std::string& symbol = "SPY")
-        : shortPeriod_(shortPeriod), longPeriod_(longPeriod), symbol_(symbol) {}
-    
-    void initialize() override {
-        std::cout << "Initializing MovingAverageCrossover strategy..." << std::endl;
-        std::cout << "Short period: " << shortPeriod_ << std::endl;
-        std::cout << "Long period: " << longPeriod_ << std::endl;
-        std::cout << "Symbol: " << symbol_ << std::endl;
-    }
-    
-    void onBar(const CppBacktester::Bar& bar) override {
-        if (bar.symbol != symbol_) {
-            return;
-        }
-        
-        // Store the closing price
-        prices_.push_back(bar.close);
-        
-        // Wait until we have enough data
-        if (prices_.size() < longPeriod_) {
-            return;
-        }
-        
-        // Calculate short-term moving average
-        double shortMA = 0.0;
-        for (size_t i = prices_.size() - shortPeriod_; i < prices_.size(); ++i) {
-            shortMA += prices_[i];
-        }
-        shortMA /= shortPeriod_;
-        
-        // Calculate long-term moving average
-        double longMA = 0.0;
-        for (size_t i = prices_.size() - longPeriod_; i < prices_.size(); ++i) {
-            longMA += prices_[i];
-        }
-        longMA /= longPeriod_;
-        
-        // Get current position
-        auto position = getPosition(symbol_);
-        
-        // Trading logic
-        if (shortMA > longMA && position.quantity <= 0) {
-            // Buy signal
-            if (position.quantity < 0) {
-                buyToCover(std::abs(position.quantity), symbol_);
-            }
-            buy(100, symbol_);
-            std::cout << "Buy signal at " << bar.timestamp << ", price: " << bar.close << std::endl;
-        } else if (shortMA < longMA && position.quantity >= 0) {
-            // Sell signal
-            if (position.quantity > 0) {
-                sell(position.quantity, symbol_);
-            }
-            sellShort(100, symbol_);
-            std::cout << "Sell signal at " << bar.timestamp << ", price: " << bar.close << std::endl;
-        }
-    }
-    
-    void finalize() override {
-        std::cout << "Finalizing MovingAverageCrossover strategy..." << std::endl;
-        std::cout << "Final portfolio value: " << getPortfolioValue() << std::endl;
-    }
-};
+        <section class="container">
+            <h2>1. Configuration Loading</h2>
+            <p>
+                The backtester begins by loading configuration settings from config.json:
+            </p>
+            <pre><code>// In main.cpp
+Config config;
+std::string configFilename = "config.json"; 
+if (!config.loadFromFile(configFilename)) {
+    Utils::logMessage("Main Warning: Proceeding with internal default configuration.");
+} else {
+    std::cout << "Configuration loaded successfully from " << configFilename << std::endl;
+}</code></pre>
 
-int main() {
-    // Create a backtester instance
-    CppBacktester::Backtester backtester;
+            <p>
+                During this phase:
+            </p>
+            <ul>
+                <li>The Config class parses the JSON file using the nlohmann JSON library</li>
+                <li>Default values are applied for any missing configuration parameters</li>
+                <li>Configuration validation is performed</li>
+                <li>The loaded configuration is stored for later use</li>
+            </ul>
+        </section>
+
+        <section class="container">
+            <h2>2. BacktestEngine Initialization</h2>
+            <p>
+                The BacktestEngine is created with the loaded configuration:
+            </p>
+            <pre><code>// In main.cpp
+std::unique_ptr<BacktestEngine> engine = std::make_unique<BacktestEngine>(config);</code></pre>
+
+            <p>
+                During engine initialization:
+            </p>
+            <ul>
+                <li>The engine stores a copy of the configuration</li>
+                <li>A Broker instance is created with parameters from the configuration</li>
+                <li>Initial variables and data structures are set up</li>
+            </ul>
+        </section>
+
+        <section class="container">
+            <h2>3. Data Loading</h2>
+            <p>
+                Next, the engine loads market data:
+            </p>
+            <pre><code>// In main.cpp
+if (!engine->loadData()) {
+    Utils::logMessage("Main Error: Failed to load data. Exiting.");
+    return 1;
+}</code></pre>
+
+            <p>
+                The data loading process:
+            </p>
+            <ol>
+                <li>BacktestEngine creates a DataLoader instance to manage loading process</li>
+                <li>DataLoader checks configuration to determine data source:
+                    <ul>
+                        <li>If SourceType = "CSV", a CSVDataSource is created</li>
+                        <li>If SourceType = "API", an APIDataSource is created</li>
+                    </ul>
+                </li>
+                <li>For CSV data:
+                    <ol>
+                        <li>CSVDataSource opens the CSV file specified in INPUT_CSV_PATH</li>
+                        <li>CSVParserStep parses each line according to CSV_Columns configuration</li>
+                        <li>Each line is converted into a Bar object</li>
+                        <li>Column mapping is performed based on configuration</li>
+                    </ol>
+                </li>
+                <li>For API data:
+                    <ol>
+                        <li>APIDataSource connects to the specified API endpoint</li>
+                        <li>API requests are made to fetch historical data</li>
+                        <li>Response data is parsed and converted to Bar objects</li>
+                    </ol>
+                </li>
+                <li>Bars are collected into a vector and sorted by timestamp</li>
+                <li>Optional partial data loading is performed if USE_PARTIAL_DATA is true</li>
+                <li>The loaded data is stored in the BacktestEngine's historicalData vector</li>
+            </ol>
+        </section>
+
+        <section class="container">
+            <h2>4. Strategy Setup</h2>
+            <p>
+                After data loading, a strategy is created and set:
+            </p>
+            <pre><code>// In main.cpp
+std::string stratType = config.getNested<std::string>("/Strategy/Type", "Random");
+std::unique_ptr<Strategy> strategy;
+
+if (stratType == "ML") {
+    strategy = std::make_unique<HMMStrategy>();
+} else if (stratType == "Benchmark") {
+    strategy = std::make_unique<BenchmarkStrategy>();
+} else {
+    strategy = std::make_unique<RandomStrategy>();
+}
+
+Utils::logMessage("Main: Creating " + strategy->getName() + " strategy.");
+engine->setStrategy(std::move(strategy));</code></pre>
+
+            <p>
+                Strategy setup involves:
+            </p>
+            <ol>
+                <li>Creating an instance of the appropriate strategy type based on configuration</li>
+                <li>Setting strategy ownership to the BacktestEngine via setStrategy()</li>
+                <li>BacktestEngine provides the strategy with references to:
+                    <ul>
+                        <li>The Broker instance: strategy->setBroker(broker.get())</li>
+                        <li>The historical data: strategy->setData(&historicalData, primaryDataName)</li>
+                        <li>The configuration: strategy->setConfig(&config)</li>
+                    </ul>
+                </li>
+                <li>Strategy's initialize() method is called to set up internal state</li>
+            </ol>
+        </section>
+
+        <section class="container">
+            <h2>5. Backtest Execution</h2>
+            <p>
+                The backtest is executed with:
+            </p>
+            <pre><code>// In main.cpp
+engine->run();</code></pre>
+
+            <p>
+                The BacktestEngine::run() method performs the main backtest loop:
+            </p>
+            <pre><code>// In BacktestEngine::run()
+// Call strategy's init method before starting
+strategy->init();
+
+// Loop through each bar in the historical data
+for (size_t i = 0; i < historicalData.size(); ++i) {
+    currentBarIndex = i;
+    const Bar& currentBar = historicalData[i];
     
-    // Configure the backtester
-    backtester.setStartDate("2020-01-01");
-    backtester.setEndDate("2020-12-31");
-    backtester.setInitialCapital(100000.0);
+    // Update current price
+    currentPrice = currentBar.columns[1]; // Assuming close price is at index 1
     
-    // Load data
-    backtester.loadData("data/spy_daily.csv");
+    // Process pending orders using current bar data
+    broker->processOrders(currentBar);
     
-    // Create and set the strategy
-    auto strategy = std::make_shared<MovingAverageCrossover>(20, 50, "SPY");
-    backtester.setStrategy(strategy);
+    // Call strategy's next method to process this bar
+    strategy->next(currentBar, i, currentPrice);
+}
+
+// Call strategy's stop method when done
+strategy->stop();</code></pre>
+
+            <p>
+                For each bar in the historical data:
+            </p>
+            <ol>
+                <li>Current price information is updated</li>
+                <li>The Broker processes any pending orders:
+                    <ol>
+                        <li>Orders are filled based on the current bar's price data</li>
+                        <li>Take profit and stop loss orders are checked</li>
+                        <li>Order statuses are updated</li>
+                        <li>The Strategy is notified of order status changes</li>
+                    </ol>
+                </li>
+                <li>The Strategy's next() method is called with the current bar:
+                    <ol>
+                        <li>Strategy analyzes the bar using its internal logic</li>
+                        <li>It may submit new orders to the Broker</li>
+                        <li>It updates internal indicators and state</li>
+                    </ol>
+                </li>
+            </ol>
+        </section>
+
+        <section class="container">
+            <h2>6. Strategy-Broker Interaction</h2>
+            <p>
+                The Strategy and Broker interact during the backtest loop:
+            </p>
+
+            <h3>Order Submission</h3>
+            <pre><code>// In a Strategy implementation
+Order buyOrder;
+buyOrder.type = OrderType::BUY;
+buyOrder.symbol = bar.symbol;
+buyOrder.requestedSize = 1.0;
+buyOrder.requestedPrice = bar.columns[1]; // Close price
+buyOrder.takeProfit = bar.columns[1] + takeProfitPips_;
+buyOrder.stopLoss = bar.columns[1] - stopLossPips_;
+
+// Submit to broker
+int orderId = broker->submitOrder(buyOrder);</code></pre>
+
+            <h3>Order Processing</h3>
+            <pre><code>// In Broker::processOrders
+// For each pending order
+for (auto& order : pendingOrders) {
+    // Check if the order can be executed
+    if (canExecuteOrder(order, currentBar)) {
+        // If it's an opening order
+        if (!hasPosition(order.symbol) || 
+            (hasPosition(order.symbol) && isOrderReducingPosition(order))) {
+            executeOpenOrder(order, currentBar);
+        }
+        // If it's a closing order targeting an existing position
+        else if (hasPosition(order.symbol)) {
+            auto& position = positions[order.symbol];
+            executeCloseOrder(order, position, currentBar);
+        }
+    }
+    else {
+        // Reject the order if it can't be executed
+        rejectOrder(order, OrderStatus::REJECTED, currentBar);
+    }
     
-    // Run the backtest
-    auto results = backtester.run();
-    
-    // Print results
-    results.printSummary();
-    
-    return 0;
+    // Notify the strategy of order status change
+    if (strategy) {
+        strategy->notifyOrder(order);
+    }
+}</code></pre>
+
+            <h3>Position Management</h3>
+            <p>
+                The Broker maintains and updates positions:
+            </p>
+            <ul>
+                <li>Opening positions when orders are filled</li>
+                <li>Updating positions when additional orders are filled</li>
+                <li>Closing positions when opposing orders are filled</li>
+                <li>Processing stop-loss and take-profit levels</li>
+                <li>Calculating profit/loss and updating cash balances</li>
+            </ul>
+        </section>
+
+        <section class="container">
+            <h2>7. Machine Learning Strategy Flow</h2>
+            <p>
+                For ML strategies like HMMStrategy, there's an additional flow for model interaction:
+            </p>
+            <ol>
+                <li>Loading ONNX models via OnnxModelInterface</li>
+                <li>Feature extraction from bar data</li>
+                <li>State detection using HMM model</li>
+                <li>Model inference to generate trading signals</li>
+                <li>Order creation based on model outputs</li>
+            </ol>
+
+            <pre><code>// In HMMStrategy::next
+// Extract features from historical data
+// ...
+
+// Detect regime using HMM model
+int regime = detectRegime(features);
+
+// Select appropriate model for current regime
+auto& model = regimeModels_[regime];
+
+// Run inference
+std::vector<float> prediction = model->Predict(inputData, inputShape);
+
+// Generate trading signal based on prediction
+double signal = prediction[0];
+
+// Create orders based on signal
+if (signal > entryThreshold_) {
+    // Create buy order
+    // ...
+} else if (signal < -entryThreshold_) {
+    // Create sell order
+    // ...
 }</code></pre>
         </section>
 
         <section class="container">
-            <h2>Simple Moving Average Crossover (Python)</h2>
+            <h2>8. Metrics Calculation</h2>
             <p>
-                This example implements the same moving average crossover strategy in Python.
+                After the backtest completes, performance metrics are calculated:
             </p>
-            <pre><code>import cppbacktester as cb
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
+            <pre><code>// At the end of BacktestEngine::run
+// Calculate final portfolio value
+double finalValue = broker->getValue(currentPrice);
 
-class MovingAverageCrossover(cb.Strategy):
-    def __init__(self, short_period=20, long_period=50, symbol="SPY"):
-        super().__init__()
-        self.short_period = short_period
-        self.long_period = long_period
-        self.symbol = symbol
-        self.prices = []
-        
-    def initialize(self):
-        print(f"Initializing MovingAverageCrossover strategy...")
-        print(f"Short period: {self.short_period}")
-        print(f"Long period: {self.long_period}")
-        print(f"Symbol: {self.symbol}")
-        
-    def on_bar(self, bar):
-        if bar.symbol != self.symbol:
-            return
-            
-        # Store the closing price
-        self.prices.append(bar.close)
-        
-        # Wait until we have enough data
-        if len(self.prices) < self.long_period:
-            return
-            
-        # Calculate moving averages
-        prices_array = np.array(self.prices)
-        short_ma = np.mean(prices_array[-self.short_period:])
-        long_ma = np.mean(prices_array[-self.long_period:])
-        
-        # Get current position
-        position = self.get_position(self.symbol)
-        
-        # Trading logic
-        if short_ma > long_ma and position.quantity <= 0:
-            # Buy signal
-            if position.quantity < 0:
-                self.buy_to_cover(abs(position.quantity), self.symbol)
-            self.buy(100, self.symbol)
-            print(f"Buy signal at {bar.timestamp}, price: {bar.close}")
-        elif short_ma < long_ma and position.quantity >= 0:
-            # Sell signal
-            if position.quantity > 0:
-                self.sell(position.quantity, self.symbol)
-            self.sell_short(100, self.symbol)
-            print(f"Sell signal at {bar.timestamp}, price: {bar.close}")
-            
-    def finalize(self):
-        print("Finalizing MovingAverageCrossover strategy...")
-        print(f"Final portfolio value: {self.get_portfolio_value()}")
+// Calculate ROI
+double roi = (finalValue - broker->getStartingCash()) / broker->getStartingCash() * 100.0;
 
-# Load data
-data = pd.read_csv("data/spy_daily.csv")
+// Log results
+Utils::logMessage("Backtest completed.");
+Utils::logMessage("Starting balance: $" + std::to_string(broker->getStartingCash()));
+Utils::logMessage("Final balance: $" + std::to_string(finalValue));
+Utils::logMessage("ROI: " + std::to_string(roi) + "%");</code></pre>
 
-# Create a backtester instance
-backtester = cb.Backtester()
-
-# Configure the backtester
-backtester.set_start_date("2020-01-01")
-backtester.set_end_date("2020-12-31")
-backtester.set_initial_capital(100000.0)
-backtester.load_data(data)
-
-# Create and set the strategy
-strategy = MovingAverageCrossover(20, 50, "SPY")
-backtester.set_strategy(strategy)
-
-# Run the backtest
-results = backtester.run()
-
-# Print results
-results.print_summary()
-
-# Plot equity curve
-plt.figure(figsize=(12, 6))
-equity_df = results.to_dataframe()
-equity_df['equity'].plot()
-plt.title('Equity Curve')
-plt.xlabel('Date')
-plt.ylabel('Equity')
-plt.grid(True)
-plt.show()</code></pre>
+            <p>
+                More detailed metrics may include:
+            </p>
+            <ul>
+                <li>Sharpe ratio and sortino ratio</li>
+                <li>Maximum drawdown percentage and duration</li>
+                <li>Win/loss ratio</li>
+                <li>Average profit per trade</li>
+                <li>Total number of trades</li>
+            </ul>
         </section>
 
         <section class="container">
-            <h2>Mean Reversion Strategy (C++)</h2>
+            <h2>9. Python Integration Flow</h2>
             <p>
-                This example implements a mean reversion strategy in C++.
-                It buys when the price is below the lower Bollinger Band and sells when the price is above the upper Bollinger Band.
+                When using CppBacktester from Python via pybind11, the flow is similar:
             </p>
-            <pre><code>#include "CppBacktester.h"
-#include &lt;vector&gt;
-#include &lt;string&gt;
-#include &lt;iostream&gt;
-#include &lt;cmath&gt;
+            <pre><code># Python example
+import cppbacktester_py as cb
 
-class BollingerBandMeanReversion : public CppBacktester::Strategy {
-private:
-    int period_;
-    double stdDevMultiplier_;
-    std::string symbol_;
-    std::vector&lt;double&gt; prices_;
-    
-public:
-    BollingerBandMeanReversion(int period = 20, double stdDevMultiplier = 2.0, const std::string& symbol = "SPY")
-        : period_(period), stdDevMultiplier_(stdDevMultiplier), symbol_(symbol) {}
-    
-    void initialize() override {
-        std::cout << "Initializing BollingerBandMeanReversion strategy..." << std::endl;
-        std::cout << "Period: " << period_ << std::endl;
-        std::cout << "Standard Deviation Multiplier: " << stdDevMultiplier_ << std::endl;
-        std::cout << "Symbol: " << symbol_ << std::endl;
-    }
-    
-    void onBar(const CppBacktester::Bar& bar) override {
-        if (bar.symbol != symbol_) {
-            return;
-        }
-        
-        // Store the closing price
-        prices_.push_back(bar.close);
-        
-        // Wait until we have enough data
-        if (prices_.size() < period_) {
-            return;
-        }
-        
-        // Calculate simple moving average
-        double sma = 0.0;
-        for (size_t i = prices_.size() - period_; i < prices_.size(); ++i) {
-            sma += prices_[i];
-        }
-        sma /= period_;
-        
-        // Calculate standard deviation
-        double variance = 0.0;
-        for (size_t i = prices_.size() - period_; i < prices_.size(); ++i) {
-            variance += std::pow(prices_[i] - sma, 2);
-        }
-        variance /= period_;
-        double stdDev = std::sqrt(variance);
-        
-        // Calculate Bollinger Bands
-        double upperBand = sma + stdDevMultiplier_ * stdDev;
-        double lowerBand = sma - stdDevMultiplier_ * stdDev;
-        
-        // Get current position
-        auto position = getPosition(symbol_);
-        
-        // Trading logic
-        if (bar.close < lowerBand && position.quantity <= 0) {
-            // Buy signal - price below lower band
-            if (position.quantity < 0) {
-                buyToCover(std::abs(position.quantity), symbol_);
-            }
-            buy(100, symbol_);
-            std::cout << "Buy signal at " << bar.timestamp << ", price: " << bar.close << std::endl;
-        } else if (bar.close > upperBand && position.quantity >= 0) {
-            // Sell signal - price above upper band
-            if (position.quantity > 0) {
-                sell(position.quantity, symbol_);
-            }
-            sellShort(100, symbol_);
-            std::cout << "Sell signal at " << bar.timestamp << ", price: " << bar.close << std::endl;
-        }
-    }
-    
-    void finalize() override {
-        std::cout << "Finalizing BollingerBandMeanReversion strategy..." << std::endl;
-        std::cout << "Final portfolio value: " << getPortfolioValue() << std::endl;
-    }
-};
+# 1. Load configuration
+config = cb.Config()
+config.load_from_file("config.json")
 
-int main() {
-    // Create a backtester instance
-    CppBacktester::Backtester backtester;
-    
-    // Configure the backtester
-    backtester.setStartDate("2020-01-01");
-    backtester.setEndDate("2020-12-31");
-    backtester.setInitialCapital(100000.0);
-    
-    // Load data
-    backtester.loadData("data/spy_daily.csv");
-    
-    // Create and set the strategy
-    auto strategy = std::make_shared<BollingerBandMeanReversion>(20, 2.0, "SPY");
-    backtester.setStrategy(strategy);
-    
-    // Run the backtest
-    auto results = backtester.run();
-    
-    // Print results
-    results.printSummary();
-    
-    return 0;
-}</code></pre>
-        </section>
+# 2. Create engine with config
+engine = cb.BacktestEngine(config)
 
-        <section class="container">
-            <h2>Machine Learning Strategy (Python)</h2>
+# 3. Load data
+engine.load_data()
+
+# 4. Create and set strategy
+strategy = cb.RandomStrategy()  # or HMMStrategy, BenchmarkStrategy, etc.
+engine.set_strategy(strategy)
+
+# 5. Run backtest
+engine.run()
+
+# 6. Get results
+# (Future functionality)</code></pre>
+            
             <p>
-                This example demonstrates how to use an ONNX model in a Python strategy.
+                The Python bindings expose the core C++ functionality, allowing:
             </p>
-            <pre><code>import cppbacktester as cb
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler
-
-class MLStrategy(cb.Strategy):
-    def __init__(self, model_path, symbol="SPY", lookback=10):
-        super().__init__()
-        self.model_path = model_path
-        self.symbol = symbol
-        self.lookback = lookback
-        self.prices = []
-        self.features = []
-        self.scaler = StandardScaler()
-        
-    def initialize(self):
-        print(f"Initializing ML Strategy...")
-        print(f"Model path: {self.model_path}")
-        print(f"Symbol: {self.symbol}")
-        
-        # Load ONNX model
-        self.model = cb.ONNXModel(self.model_path)
-        print(f"Model loaded successfully")
-        print(f"Input names: {self.model.get_input_names()}")
-        print(f"Output names: {self.model.get_output_names()}")
-        
-    def on_bar(self, bar):
-        if bar.symbol != self.symbol:
-            return
-            
-        # Store the closing price
-        self.prices.append(bar.close)
-        
-        # Wait until we have enough data
-        if len(self.prices) < self.lookback + 1:
-            return
-            
-        # Calculate features
-        returns = np.diff(self.prices) / self.prices[:-1]
-        
-        # Wait until we have enough return data
-        if len(returns) < self.lookback:
-            return
-            
-        # Use the last 'lookback' returns as features
-        features = returns[-self.lookback:]
-        
-        # Normalize features
-        if len(self.features) < 100:  # Use first 100 samples to fit scaler
-            self.features.append(features)
-            if len(self.features) == 100:
-                self.scaler.fit(self.features)
-            return
-            
-        # Normalize the features
-        features_normalized = self.scaler.transform([features])[0]
-        
-        # Prepare input for the model
-        model_input = np.array(features_normalized, dtype=np.float32)
-        
-        # Run inference
-        prediction = self.model.predict(model_input)
-        
-        # Get current position
-        position = self.get_position(self.symbol)
-        
-        # Trading logic based on model prediction
-        if prediction[0] > 0.6 and position.quantity <= 0:  # Strong buy signal
-            if position.quantity < 0:
-                self.buy_to_cover(abs(position.quantity), self.symbol)
-            self.buy(100, self.symbol)
-            print(f"Buy signal at {bar.timestamp}, price: {bar.close}, prediction: {prediction[0]}")
-        elif prediction[0] < 0.4 and position.quantity >= 0:  # Strong sell signal
-            if position.quantity > 0:
-                self.sell(position.quantity, self.symbol)
-            self.sell_short(100, self.symbol)
-            print(f"Sell signal at {bar.timestamp}, price: {bar.close}, prediction: {prediction[0]}")
-            
-    def finalize(self):
-        print("Finalizing ML Strategy...")
-        print(f"Final portfolio value: {self.get_portfolio_value()}")
-
-# Load data
-data = pd.read_csv("data/spy_daily.csv")
-
-# Create a backtester instance
-backtester = cb.Backtester()
-
-# Configure the backtester
-backtester.set_start_date("2020-01-01")
-backtester.set_end_date("2020-12-31")
-backtester.set_initial_capital(100000.0)
-backtester.load_data(data)
-
-# Create and set the strategy
-strategy = MLStrategy("models/market_predictor.onnx", "SPY", 10)
-backtester.set_strategy(strategy)
-
-# Run the backtest
-results = backtester.run()
-
-# Print results
-results.print_summary()
-
-# Plot equity curve
-plt.figure(figsize=(12, 6))
-equity_df = results.to_dataframe()
-equity_df['equity'].plot()
-plt.title('Equity Curve')
-plt.xlabel('Date')
-plt.ylabel('Equity')
-plt.grid(True)
-plt.show()</code></pre>
-        </section>
-
-        <section class="container">
-            <h2>Multi-Asset Strategy (C++)</h2>
+            <ul>
+                <li>Configuration management</li>
+                <li>Data loading</li>
+                <li>Strategy selection and configuration</li>
+                <li>Backtest execution</li>
+                <li>Results analysis (in development)</li>
+            </ul>
             <p>
-                This example demonstrates how to implement a strategy that trades multiple assets.
+                Note: Some advanced features like custom Python strategies, direct DataFrame integration, 
+                and visualization tools are under development.
             </p>
-            <pre><code>#include "CppBacktester.h"
-#include &lt;vector&gt;
-#include &lt;string&gt;
-#include &lt;iostream&gt;
-#include &lt;map&gt;
-#include &lt;algorithm&gt;
-
-class MomentumRotation : public CppBacktester::Strategy {
-private:
-    int lookbackPeriod_;
-    int holdingPeriod_;
-    int topN_;
-    std::vector&lt;std::string&gt; symbols_;
-    std::map&lt;std::string, std::vector&lt;double&gt;&gt; prices_;
-    int daysSinceRebalance_;
-    
-public:
-    MomentumRotation(int lookbackPeriod = 60, int holdingPeriod = 30, int topN = 3)
-        : lookbackPeriod_(lookbackPeriod), holdingPeriod_(holdingPeriod), topN_(topN), daysSinceRebalance_(0) {
-        // Define the universe of assets
-        symbols_ = {"SPY", "QQQ", "IWM", "EFA", "EEM", "AGG", "TLT", "GLD", "SLV", "USO"};
-    }
-    
-    void initialize() override {
-        std::cout << "Initializing MomentumRotation strategy..." << std::endl;
-        std::cout << "Lookback period: " << lookbackPeriod_ << std::endl;
-        std::cout << "Holding period: " << holdingPeriod_ << std::endl;
-        std::cout << "Top N assets: " << topN_ << std::endl;
-        
-        // Initialize price vectors for each symbol
-        for (const auto& symbol : symbols_) {
-            prices_[symbol] = std::vector&lt;double&gt;();
-        }
-    }
-    
-    void onBar(const CppBacktester::Bar& bar) override {
-        // Check if the symbol is in our universe
-        if (std::find(symbols_.begin(), symbols_.end(), bar.symbol) == symbols_.end()) {
-            return;
-        }
-        
-        // Store the closing price
-        prices_[bar.symbol].push_back(bar.close);
-        
-        // Check if we have enough data for all symbols
-        bool enoughData = true;
-        for (const auto& symbol : symbols_) {
-            if (prices_[symbol].size() < lookbackPeriod_) {
-                enoughData = false;
-                break;
-            }
-        }
-        
-        if (!enoughData) {
-            return;
-        }
-        
-        // Increment days since last rebalance
-        daysSinceRebalance_++;
-        
-        // Check if it's time to rebalance
-        if (daysSinceRebalance_ >= holdingPeriod_) {
-            rebalancePortfolio();
-            daysSinceRebalance_ = 0;
-        }
-    }
-    
-    void rebalancePortfolio() {
-        std::cout << "Rebalancing portfolio..." << std::endl;
-        
-        // Calculate momentum for each symbol
-        std::vector&lt;std::pair&lt;std::string, double&gt;&gt; momentum;
-        for (const auto& symbol : symbols_) {
-            const auto& symbolPrices = prices_[symbol];
-            double startPrice = symbolPrices[symbolPrices.size() - lookbackPeriod_];
-            double endPrice = symbolPrices.back();
-            double momentumScore = (endPrice - startPrice) / startPrice;
-            momentum.push_back({symbol, momentumScore});
-        }
-        
-        // Sort by momentum score (descending)
-        std::sort(momentum.begin(), momentum.end(), 
-                 [](const auto& a, const auto& b) { return a.second > b.second; });
-        
-        // Close all existing positions
-        for (const auto& symbol : symbols_) {
-            auto position = getPosition(symbol);
-            if (position.quantity > 0) {
-                sell(position.quantity, symbol);
-                std::cout << "Closed position in " << symbol << std::endl;
-            }
-        }
-        
-        // Calculate position size
-        double portfolioValue = getPortfolioValue();
-        double positionSize = portfolioValue / topN_;
-        
-        // Buy top N assets
-        for (int i = 0; i < std::min(topN_, static_cast<int>(momentum.size())); ++i) {
-            const auto& [symbol, score] = momentum[i];
-            double price = prices_[symbol].back();
-            int shares = static_cast<int>(positionSize / price);
-            
-            if (shares > 0) {
-                buy(shares, symbol);
-                std::cout << "Bought " << shares << " shares of " << symbol 
-                          << " (momentum score: " << score << ")" << std::endl;
-            }
-        }
-    }
-    
-    void finalize() override {
-        std::cout << "Finalizing MomentumRotation strategy..." << std::endl;
-        std::cout << "Final portfolio value: " << getPortfolioValue() << std::endl;
-    }
-};
-
-int main() {
-    // Create a backtester instance
-    CppBacktester::Backtester backtester;
-    
-    // Configure the backtester
-    backtester.setStartDate("2018-01-01");
-    backtester.setEndDate("2020-12-31");
-    backtester.setInitialCapital(100000.0);
-    
-    // Load data for multiple assets
-    backtester.loadData("data/multi_asset_daily.csv");
-    
-    // Create and set the strategy
-    auto strategy = std::make_shared<MomentumRotation>(60, 30, 3);
-    backtester.setStrategy(strategy);
-    
-    // Run the backtest
-    auto results = backtester.run();
-    
-    // Print results
-    results.printSummary();
-    
-    return 0;
-}</code></pre>
         </section>
     </main>
 
     <footer>
-        <p>&copy; 2023 CppBacktester Project. All rights reserved.</p>
+        <p>&copy; 2025 CppBacktester Project. All rights reserved.</p>
     </footer>
 </body>
 </html>
