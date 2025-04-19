@@ -1,9 +1,9 @@
 """
 Train XGBoost model on backtester data.
 """
+# add path to cppbacktester_y
 import sys
 from pathlib import Path
-# Add project build output to Python path for C++ extension
 lib_path = Path(__file__).parent.parent / 'build' / 'output' / 'lib'
 sys.path.append(str(lib_path))
 
@@ -22,14 +22,18 @@ def main():
     Main function to coordinate data loading, preprocessing, optimization, training, and evaluation.
     """
     parser = argparse.ArgumentParser(description="Train XGBoost model with backtester data.")
-    parser.add_argument("--config", type=str, required=True, help="Path to config file.")
+    parser.add_argument("--config", type=str, default=str(Path(__file__).parent.parent / 'config.json'), help="Path to config file.")
     parser.add_argument("--partial", action="store_true", help="Use partial data load.")
     parser.add_argument("--partial_percent", type=float, default=100.0, help="Percent of data to load if partial.")
     parser.add_argument("--test_size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
     parser.add_argument("--random_state", type=int, default=42, help="Random seed for data splitting and CV.")
     parser.add_argument("--param_config", type=str, default=None, help="Path to JSON file with hyperparameter search spaces.")
-    parser.add_argument("--model_output", type=str, default="xgb_model.json", help="Path to save trained model.")
-    parser.add_argument("--metrics_output", type=str, default="metrics.json", help="Path to save evaluation metrics.")
+    parser.add_argument("--model_output", type=str,
+        default=str(Path(__file__).parent / "xgb_saved" / "xgb_model.json"),
+        help="Path to save trained model.")
+    parser.add_argument("--metrics_output", type=str,
+        default=str(Path(__file__).parent / "xgb_saved" / "metrics.json"),
+        help="Path to save evaluation metrics.")
 
     args = parser.parse_args()
 
@@ -58,6 +62,9 @@ def main():
     metrics = evaluate_model(model, X_test, y_test)
 
     # Persist model and metrics
+    # Ensure output directories exist
+    Path(args.model_output).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.metrics_output).parent.mkdir(parents=True, exist_ok=True)
     save_model(model, args.model_output)
     print(f"Model saved to {args.model_output}")
     save_metrics(metrics, args.metrics_output)

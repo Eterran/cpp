@@ -1,6 +1,7 @@
 // BacktestEngine.cpp
 #include "BacktestEngine.h"
 #include "Utils.h"
+#include "Config.h"
 #include <stdexcept>
 #include <iostream> // For error messages
 #include <chrono>   // For timing the backtest
@@ -68,7 +69,7 @@ void BacktestEngine::setStrategy(std::unique_ptr<Strategy> strat) {
         return;
     }
     Utils::logMessage("BacktestEngine: Setting strategy...");
-    strategy = std::move(strat); // Take ownership
+    strategy = std::move(strat);
 }
 
 // --- Execution ---

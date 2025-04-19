@@ -1,6 +1,7 @@
 #include "RandomStrategy.h"
 #include "Broker.h"
 #include "Utils.h"
+#include "Config.h"
 #include <cmath>
 #include <iomanip>
 #include <sstream>

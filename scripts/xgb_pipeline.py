@@ -5,15 +5,29 @@ import json
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+
+# add path to cppbacktester_y
+import sys
+from pathlib import Path
+lib_path = Path(__file__).parent.parent / 'build' / 'output' / 'lib'
+sys.path.append(str(lib_path))
+
 from cppbacktester_py import Config, DataLoader
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
+import sys
+from pathlib import Path  # for config path resolution
 
 def load_data(config_path: str, use_partial: bool = False, partial_percent: float = 100.0) -> pd.DataFrame:
+    # Resolve config path relative to project root if not absolute
+    config_file = Path(config_path)
+    if not config_file.is_absolute():
+        config_file = Path(__file__).parent.parent / config_file
+
     config = Config()
-    if not config.load_from_file(config_path):
-        raise FileNotFoundError(f"Could not load config from {config_path}")
+    if not config.load_from_file(str(config_file)):
+        raise FileNotFoundError(f"Could not load config from {config_file}")
     loader = DataLoader(config)
     bars = loader.load_data(use_partial, partial_percent)
     data = [

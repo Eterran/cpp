@@ -1,3 +1,10 @@
+#  always load vcpkg’s toolchain
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+  set(CMAKE_TOOLCHAIN_FILE
+    "${CMAKE_SOURCE_DIR}/third_party/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    CACHE STRING "Vcpkg toolchain file")
+endif()
+
 # Minimum CMake version required
 cmake_minimum_required(VERSION 3.12)
 
@@ -7,23 +14,8 @@ project(CppBacktester VERSION 1.0 LANGUAGES CXX)
 # Add cmake modules directory
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# --------------------------------------------------------
-# Disable optional curl features for a minimal staticbuild:
-# --------------------------------------------------------
-# set(BUILD_CURL_EXE       OFF CACHE BOOL "" FORCE)
-# set(BUILD_TESTING        OFF CACHE BOOL "" FORCE)
-# set(BUILD_SHARED_LIBS    OFF CACHE BOOL "" FORCE)
-
-# set(CURL_ZLIB            OFF CACHE STRING "" FORCE)
-# set(CURL_BROTLI          OFF CACHE STRING "" FORCE)
-# set(CURL_ZSTD            OFF CACHE STRING "" FORCE)
-# set(USE_NGHTTP2          OFF CACHE BOOL ""   FORCE)
-# set(USE_LIBIDN2          OFF CACHE BOOL ""   FORCE)
-# set(CURL_USE_LIBPSL      OFF CACHE BOOL ""   FORCE)
-
 # use vcpkg
-# set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/third_party/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
-# find_package(CURL REQUIRED)
+find_package(CURL REQUIRED)
 
 # --- Configuration ---
 # Set the C++ standard to C++17
@@ -49,19 +41,22 @@ foreach(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} "${OUTPUT_DIR}/lib")
 endforeach(OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES)
 
-# --- Python Development (only look for it if building Python module) ---
+# --- Python Development ---
 if(BUILD_PYTHON_MODULE)
-    # Find Python with both Interpreter and Development components
-    find_package(Python REQUIRED COMPONENTS Interpreter Development)
+    find_package(Python REQUIRED COMPONENTS Interpreter Development NumPy)
     message(STATUS "Found Python: ${Python_EXECUTABLE} (found version \"${Python_VERSION}\")")
     message(STATUS "Python include directories: ${Python_INCLUDE_DIRS}")
 
-    # --- Add pybind11 ---
-    find_package(Pybind11 REQUIRED)
+    # Install Python dependencies automatically
+    execute_process(
+        COMMAND ${Python_EXECUTABLE} -m pip install --upgrade pip
+    )
+    execute_process(
+        COMMAND ${Python_EXECUTABLE} -m pip install -r ${CMAKE_SOURCE_DIR}/requirements.txt
+    )
 
-    # Add pybind11 subdirectory
+    # --- Add pybind11 ---
     add_subdirectory(third_party/pybind11)
-    message(STATUS "Added pybind11 submodule (needed for Python module)")
 endif()
 
 # --- ONNX Runtime Configuration ---
@@ -103,7 +98,7 @@ message(STATUS "ONNX Runtime Architecture Target: ${ORT_ARCH}")
 set(ORT_ROOT_GUESS "${ORT_DOWNLOAD_DIR}/onnxruntime-${ORT_ARCH}-${ORT_VERSION}")
 if(NOT DEFINED ENV{ONNXRUNTIME_ROOT} AND NOT IS_DIRECTORY "${ORT_ROOT_GUESS}")
     message(STATUS "ONNX Runtime not found. Attempting to download...")
-    include(DownloadONNX)  # Include the module
+    include(DownloadONNX)
     download_onnxruntime(ONNXRUNTIME_ROOT_DOWNLOADED ${ORT_VERSION} ${ORT_ARCH} ${ORT_DOWNLOAD_DIR})
     set(ORT_ROOT ${ONNXRUNTIME_ROOT_DOWNLOADED})
 elseif(DEFINED ENV{ONNXRUNTIME_ROOT})
@@ -112,11 +107,6 @@ elseif(DEFINED ENV{ONNXRUNTIME_ROOT})
 else()
     set(ORT_ROOT ${ORT_ROOT_GUESS})
     message(STATUS "Using existing ONNX Runtime at: ${ORT_ROOT}")
-endif()
-
-# Verify ORT_ROOT and find components
-if(NOT IS_DIRECTORY "${ORT_ROOT}")
-    message(FATAL_ERROR "ONNX Runtime directory not found: ${ORT_ROOT}")
 endif()
 
 # Find ONNX Runtime include and library files
@@ -140,11 +130,6 @@ file(GLOB CORE_SOURCE_FILES CONFIGURE_DEPENDS
 # Explicitly exclude main.cpp and bindings.cpp from core sources
 list(FILTER CORE_SOURCE_FILES EXCLUDE REGEX "(main\.cpp|bindings\.cpp)$")
 
-# Check that source files were found
-if(NOT CORE_SOURCE_FILES)
-    message(WARNING "No core source files found in src/. Check GLOB pattern.")
-endif()
-
 # Define source files for each target
 set(EXECUTABLE_MAIN_SRC "src/main.cpp")
 set(PYTHON_BINDINGS_SRC "src/bindings.cpp")
@@ -164,11 +149,6 @@ endif()
 if(BUILD_EXECUTABLE)
     set(EXECUTABLE_NAME "backtest_executable")
 
-    # Check if entry point exists
-    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${EXECUTABLE_MAIN_SRC}")
-        message(FATAL_ERROR "Executable entry point '${EXECUTABLE_MAIN_SRC}' not found.")
-    endif()
-
     # Create executable target
     add_executable(${EXECUTABLE_NAME} ${EXECUTABLE_MAIN_SRC} ${CORE_SOURCE_FILES})
 
@@ -179,12 +159,18 @@ if(BUILD_EXECUTABLE)
     target_include_directories(${EXECUTABLE_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${ONNXRUNTIME_INCLUDE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/xgboost
+        ${Python_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/xgboost
     )
 
     # Link libraries
     target_link_libraries(${EXECUTABLE_NAME} PRIVATE 
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/pybind11
         ${ONNXRUNTIME_LIBRARY} 
-        # CURL::libcurl
+        CURL::libcurl
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/xgboost/xgboost.lib
+        E:/Python312/libs/python312.lib
     )
 
     # Set compiler options
@@ -200,25 +186,11 @@ if(BUILD_EXECUTABLE)
         "${ONNXRUNTIME_LIBRARY}"
         "${OUTPUT_DIR}"
     )
-
-    message(STATUS "Executable target ${EXECUTABLE_NAME} configured.")
 endif()
 
 # --- Python Module Target ---
 if(BUILD_PYTHON_MODULE)
     set(MODULE_NAME "cppbacktester_py")
-
-    # Check if entry point exists
-    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${PYTHON_BINDINGS_SRC}")
-        message(FATAL_ERROR "Python bindings entry point '${PYTHON_BINDINGS_SRC}' not found.")
-    endif()
-
-    # Check if pybind11 headers are found
-    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/pybind11/include/pybind11/pybind11.h")
-        message(FATAL_ERROR "pybind11 headers not found at '${CMAKE_CURRENT_SOURCE_DIR}/third_party/pybind11/include/pybind11/pybind11.h'")
-    else()
-        message(STATUS "Found pybind11.h at '${CMAKE_CURRENT_SOURCE_DIR}/third_party/pybind11/include/pybind11/pybind11.h'")
-    endif()
 
     # Create Python module target
     set_source_files_properties(${PYTHON_BINDINGS_SRC} PROPERTIES HEADER_FILE_ONLY OFF)
@@ -227,23 +199,22 @@ if(BUILD_PYTHON_MODULE)
         ${CORE_SOURCE_FILES}
     )
 
-    # Print information about the module
-    message(STATUS "Python module name: ${MODULE_NAME}")
-    message(STATUS "Python module extension: ${PYTHON_MODULE_EXTENSION}")
-
     # Setup include directories
     target_include_directories(${MODULE_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${ONNXRUNTIME_INCLUDE_DIR}
-        ${Python_INCLUDE_DIRS}  # Explicitly add Python include dirs
-        ${PYBIND11_INCLUDE_DIR}  # Add pybind11 include directory
+        ${Python_INCLUDE_DIRS}
+        ${PYBIND11_INCLUDE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/xgboost
     )
 
     # Link libraries
     target_link_libraries(${MODULE_NAME} PRIVATE
+        # ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${ONNXRUNTIME_LIBRARY}
         ${Python_LIBRARIES}
-        # CURL::libcurl
+        CURL::libcurl
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/xgboost/xgboost.lib
     )
 
     # Set compiler options
@@ -259,27 +230,4 @@ if(BUILD_PYTHON_MODULE)
         "${ONNXRUNTIME_LIBRARY}"
         "${OUTPUT_DIR}"
     )
-
-    message(STATUS "Python module target ${MODULE_NAME} configured.")
-endif()
-
-# --- Summary ---
-message(STATUS "-------------------------------------------------------")
-message(STATUS "CppBacktester Configuration Summary:")
-message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "  ONNX Runtime: ${ORT_ROOT}")
-message(STATUS "  Output Directory: ${OUTPUT_DIR}")
-
-if(BUILD_EXECUTABLE)
-    message(STATUS "  Executable: ${OUTPUT_DIR}/bin/${EXECUTABLE_NAME}${CMAKE_EXECUTABLE_SUFFIX}")
-else()
-    message(STATUS "  Executable: DISABLED")
-endif()
-
-if(BUILD_PYTHON_MODULE)
-    message(STATUS "  Python Module: ${OUTPUT_DIR}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${MODULE_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    message(STATUS "  Python Version: ${Python_VERSION}")
-    message(STATUS "  Python Include Dirs: ${Python_INCLUDE_DIRS}")
-else()
-    message(STATUS "  Python Module: DISABLED")
 endif()

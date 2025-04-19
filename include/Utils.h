@@ -16,9 +16,9 @@ namespace Utils {
     void logMessage(const std::string& message);
 
     std::string timePointToString(const std::chrono::system_clock::time_point& tp);
-    // Example of a potential future utility
-    // std::vector<std::string> split(const std::string& s, char delimiter);
-
-} // namespace Utils
+    
+    std::string WideToUTF8(const std::wstring& wstr);
+    std::wstring UTF8ToWide(const std::string& str);
+}
 
 #endif // UTILS_H

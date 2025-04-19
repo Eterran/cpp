@@ -1,10 +1,10 @@
 #include "Utils.h"
 #include <iostream>
-#include <fstream> // Keep for potential future file logging
+#include <fstream>
 #include <sstream>
-#include <iomanip> // For std::get_time
-#include <stdexcept> // For exceptions
-#include <ctime>   // For formatting time in logs
+#include <iomanip> 
+#include <stdexcept>
+#include <ctime> 
 #include <vector>
 
 namespace Utils {
@@ -145,4 +145,27 @@ namespace Utils {
         oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
         return oss.str();
     }
+
+    #ifdef _WIN32
+    #include <Windows.h>
+
+    std::string WideToUTF8(const std::wstring& wstr) {
+        if (wstr.empty()) return {};
+
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1,
+                                            nullptr, 0, nullptr, nullptr);
+        std::string str(size_needed - 1, 0);  // exclude null terminator
+        WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1,
+                            &str[0], size_needed, nullptr, nullptr);
+        return str;
+    }
+
+    std::wstring UTF8ToWide(const std::string& str) {
+        if (str.empty()) return {};
+        int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
+        std::wstring wstr(size_needed - 1, 0);  // exclude null terminator
+        MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &wstr[0], size_needed);
+        return wstr;
+    }
+    #endif
 }

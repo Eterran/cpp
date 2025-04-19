@@ -1,6 +1,7 @@
 // DataLoader.cpp
 #include "DataLoader.h"
 #include "Utils.h"
+#include "Config.h"
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -10,7 +11,7 @@
 #include <future>
 #include <charconv>
 #include "CSVDataSource.h"
-// #include "APIDataSource.h"
+#include "APIDataSource.h"
 #include "json.hpp"
 #include "JSONParserStep.h"
 #include "CSVParserStep.h"
@@ -23,12 +24,13 @@ DataLoader::DataLoader(const Config& cfg) :
     std::string input = config.getNested<std::string>("/Data/INPUT_SOURCE", "csv");
     if (input == "api") {
         std::string url = config.getNested<std::string>("/Data/API_URL", "");
-        // dataSource = std::make_unique<APIDataSource>(url, config);
+        dataSource = std::make_unique<APIDataSource>(url, config);
     } else {
         std::string path = config.getNested<std::string>("/Data/INPUT_CSV_PATH", "");
         char delim = config.getNested<std::string>("/Data/CSV_Delimiter", ",")[0];
         bool skipHeader = config.getNested<bool>("/Data/CSV_Has_Header", false);
         dataSource = std::make_unique<CSVDataSource>(path, delim, skipHeader);
+        Utils::logMessage("DataLoader: Initialized with " + path + " dataset.");
     }
     initParserSteps();
 }
@@ -93,7 +95,7 @@ std::vector<Bar> DataLoader::loadData(bool usePartial, double partialPercent) {
 
     // Parse phase: sequential or parallel
     std::vector<Bar> data;
-    int numThreads = config.getNested<int>("/Data/Threads", 1);
+    int numThreads = config.getNested<int>("/Data/Threads", 2);
     if (numThreads > 1 && lines.size() > 0) {
         Utils::logMessage("DataLoader: Parsing in parallel using " + std::to_string(numThreads) + " threads.");
         std::vector<std::future<std::vector<Bar>>> futures;

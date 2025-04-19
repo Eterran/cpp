@@ -6,7 +6,7 @@
 #include "Config.h"
 #include "DataSource.h"
 #include "CSVDataSource.h"
-// #include "APIDataSource.h"
+#include "APIDataSource.h"
 #include "ParserStep.h"
 #include <string>
 #include <vector>

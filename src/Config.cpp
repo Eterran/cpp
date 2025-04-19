@@ -20,12 +20,11 @@ Config::Config() {
 void Config::setDefaultValues() {
     configData = {
         {"Data", {
-            {"SourceType", "CSV"}, // Added: Type of source (CSV, WebSocket, Database etc.) - For future use
-            {"INPUT_CSV_PATH", "E:/UMHack/btc_market_data.csv"},
+            {"SourceType", "CSV"},
+            {"INPUT_CSV_PATH", "E:/data/cleaned_data.csv"},
             {"USE_PARTIAL_DATA", false},
             {"PARTIAL_DATA_PERCENT", 100.0},
-            {"USE_PARTIAL_DATA", false},
-            {"PARTIAL_DATA_PERCENT", 100.0},
+            {"Threads", 2},
 
             {"CSV_Timestamp_Col", 0},        // Column index (0-based) or Name (if header exists)
             {"CSV_Timestamp_Format", "%Y-%m-%d %H:%M:%S"}, // strptime/get_time format + "%f" for custom ms handling
@@ -44,27 +43,58 @@ void Config::setDefaultValues() {
         }},
         {"Broker", {
             {"STARTING_CASH", 100000.0},
-            {"STARTING_CASH", 100000.0},
             {"LEVERAGE", 100.0},
             {"COMMISSION_RATE", 0.06}
         }},
         {"Strategy", {
-            {"STRATEGY_NAME", "Random"},
-            {"DEBUG_MODE", false},
-            // {"SMA_PERIOD", 36000},
-            {"POSITION_TYPE", "fixed"}, // "fixed", "percent", "risk"
-            {"FIXED_SIZE", 20.0},
-            // {"CASH_PERCENT", 2.0},
-            // {"RISK_PERCENT", 1.0},
-            {"STOP_LOSS_PIPS", 50.0},
-            {"STOP_LOSS_ENABLED", true},
-            {"TAKE_PROFIT_ENABLED", true},
-            {"TAKE_PROFIT_PIPS", 50.0},
-            
-            {"BANKRUPTCY_PROTECTION", true},
-            {"FORCE_EXIT_PERCENT", -50.0},
-            {"ONE_TRADE", true},
-        }}
+            {"STRATEGY_NAME", "ML"},
+            {"Type", "ML"},           
+            {"EntryThreshold", 0.0},   
+            {"StopLossPips", 50.0},       
+            {"TakeProfitPips", 50.0},  
+            {"HMMOnnxPath", "hmm_saved/hmm_model.onnx"},
+            {"RegimeModelOnnxPaths", {
+                {"0", "xgb_saved/model_0.onnx"},
+                {"1", "xgb_saved/model_1.onnx"}
+            }}
+        }},
+        {"RegimeDetection", {
+            {"type", "HMM"},
+            {"params", {
+                {"n_components", 2},
+                {"covariance_type", "full"},
+                {"random_state", 42}
+            }},
+            {"model_path", "../../../hmm_saved/hmm_model.pkl"}
+        }},
+        {"Models", json::array({
+            {
+                {"name", "xgb_regime_0"},
+                {"type", "XGBoost"},
+                {"hyperparams", {
+                    {"n_estimators", 100},
+                    {"max_depth", 3},
+                    {"learning_rate", 0.1},
+                    {"subsample", 1.0},
+                    {"colsample_bytree", 1.0}
+                }},
+                {"regimes", {0}},
+                {"features", json::array()},
+                {"model_path", "xgb_saved/model_0.json"}
+            },
+            {
+                {"name", "xgb_regime_1"},
+                {"type", "XGBoost"},
+                {"hyperparams", {
+                    {"n_estimators", 100},
+                    {"max_depth", 3},
+                    {"learning_rate", 0.1}
+                }},
+                {"regimes", {1}},
+                {"features", json::array()},
+                {"model_path", "xgb_saved/model_1.json"}
+            }
+        })}
     };
 }
 
@@ -95,10 +125,7 @@ bool Config::loadFromFile(const std::string& filename) {
         // Merge loaded data with defaults: ensures all keys exist, loaded values override
         // This uses the json::update method (might need specific version or patch)
         // Simpler approach: just replace if loaded successfully
-        // configData.update(loadedData); // More robust merging
-
-        // Simpler: Overwrite defaults completely with loaded data
-        configData = loadedData;
+        configData.update(loadedData); // More robust merging
 
         // Optional: Validate loaded structure against default keys? More complex.
         Utils::logMessage("Config: Configuration loaded successfully.");
@@ -254,16 +281,17 @@ std::vector<ColumnSpec> Config::getColumnSpecs(const std::string& keyPath) const
     return specs;
 }
 
-// --- Explicit Template Instantiations ---
 template std::string Config::get<std::string>(const std::string& key, const std::string& defaultValue) const;
 template double Config::get<double>(const std::string& key, const double& defaultValue) const;
 template int Config::get<int>(const std::string& key, const int& defaultValue) const;
 template bool Config::get<bool>(const std::string& key, const bool& defaultValue) const;
+template nlohmann::json Config::get<nlohmann::json>(const std::string&, const nlohmann::json&) const;
 
 template std::string Config::getNested<std::string>(const std::string& keyPath, const std::string& defaultValue) const;
 template double Config::getNested<double>(const std::string& keyPath, const double& defaultValue) const;
 template int Config::getNested<int>(const std::string& keyPath, const int& defaultValue) const;
 template bool Config::getNested<bool>(const std::string& keyPath, const bool& defaultValue) const;
+template nlohmann::json Config::getNested<nlohmann::json>(const std::string&, const nlohmann::json&) const;
 
 template void Config::set<std::string>(const std::string& key, const std::string& value);
 template void Config::set<double>(const std::string& key, const double& value);

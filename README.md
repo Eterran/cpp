@@ -15,6 +15,9 @@ A C++ backtesting framework with Python bindings using pybind11 and ONNX Runtime
 - ML Model Loading (in progress)
 - API data fetching (planned)
 
+
+- TODOOOOOOOOOOOOO FORWARD TESTING
+
 ## Building the Project
 
 ### Prerequisites
@@ -70,5 +73,56 @@ build/
       *.dll                    # Shared libraries (ONNX Runtime)
     lib/
       cppbacktester_py.pyd     # Python module
+```
+
+## Architecture
+
+This section provides an overview of the main classes in the CppBacktester framework and how they interact in a typical backtest.
+
+### Main Classes
+
+- **DataSource (abstract)**: Defines a common interface for data providers. Implemented by:
+  - **CSVDataSource**: Loads market data from CSV files using `CSVParserStep`.
+  - **APIDataSource**: Fetches data from external APIs.
+
+- **ParserStep (abstract)**: Base parser step. Specialized by:
+  - **CSVParserStep**: Parses CSV input into `Bar` objects.
+  - **JSONParserStep**: Parses JSON-formatted data or config.
+
+- **DataLoader**: Orchestrates reading raw data via a `DataSource` and returns a sequence of `Bar` objects.
+
+- **BacktestEngine**: Drives the backtest loop. Innitiate `DataLoader`, `Broker`, and `Strategy`.
+
+- **Broker**: Manages, process order lifecycle, positions, and TP/SL logic.
+
+- **Strategy (abstract)**: Defines decision logic on incoming `Bar` data. Current implementations:
+  - **RandomStrategy**: Generates random buy/sell orders with fixed TP/SL for testing.
+  - **MLStrategy**: Loads a model via `ModelInterface` and issues orders based on model outputs.
+
+- **ModelInterface (abstract)**: Defines model loading and produce model input/output.
+  - **OnnxModelInterface**: Implements `ModelInterface` using ONNX Runtime to load `.onnx` files.
+
+- **TradingMetrics**: Calculates and stores aggregated metrics (sharpe ratio, P&L, drawdown).
+
+Other classes:
+- **Bar**: Represents a single market data bar containing open, high, low, close, volume, and any extra cols.
+- **Config**: Reads and stores configuration settings from `config.json`.
+- **ColumnSpec**: Defines the specification for CSV columns for parsing.
+- **Indicator**: Base class for technical indicators computed on bar data.
+- **Order**: Represents an order created by the broker during a backtest.
+- **Position**: Tracks the state and lifecycle of an open position.
+- **Utils**: Collection of utility functions used throughout the framework.
+
+### Workflow
+
+1. **Configuration**: Read settings from `config.json` into `Config`.
+2. **Data Loading**: `DataLoader` instantiates a `DataSource` (e.g., `CSVDataSource`).
+3. **Engine Setup**: Create `BacktestEngine`, attach a `Broker` and chosen `Strategy`.
+4. **Backtest Loop**: For each `Bar`:
+   - Strategy issues `TradingSignal`
+   - Broker executes orders
+   - Metrics updated
+5. **Results**: Export performance via `TradingMetrics` or Python bindings.
+
 ```
 

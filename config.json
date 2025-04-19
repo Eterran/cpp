@@ -1,0 +1,81 @@
+{
+    "Broker": {
+        "COMMISSION_RATE": 0.06,
+        "LEVERAGE": 100.0,
+        "STARTING_CASH": 100000.0
+    },
+    "Data": {
+        "API_Columns": [],
+        "CSV_Close_Col": 1,
+        "CSV_Columns": [
+            {
+                "index": 0,
+                "name": "timestamp",
+                "type": "Timestamp"
+            },
+            {
+                "index": 1,
+                "name": "close",
+                "type": "Close"
+            }
+        ],
+        "CSV_Delimiter": ",",
+        "CSV_Has_Header": true,
+        "CSV_Timestamp_Col": 0,
+        "CSV_Timestamp_Format": "%Y-%m-%d %H:%M:%S",
+        "INPUT_CSV_PATH": "E:/UMHack/btc_market_data.csv",
+        "PARTIAL_DATA_PERCENT": 100.0,
+        "SourceType": "CSV",
+        "USE_PARTIAL_DATA": false
+    },
+    "Strategy": {
+        "BANKRUPTCY_PROTECTION": true,
+        "DEBUG_MODE": false,
+        "FIXED_SIZE": 20.0,
+        "FORCE_EXIT_PERCENT": -50.0,
+        "ONE_TRADE": true,
+        "POSITION_TYPE": "fixed",
+        "STOP_LOSS_ENABLED": true,
+        "STOP_LOSS_PIPS": 50.0,
+        "STRATEGY_NAME": "Random",
+        "TAKE_PROFIT_ENABLED": true,
+        "TAKE_PROFIT_PIPS": 50.0
+    },
+    "RegimeDetection": {
+        "type": "HMM",
+        "params": {
+            "n_components": 2,
+            "covariance_type": "full",
+            "random_state": 42
+        },
+        "model_path": "hmm_saved/hmm_model.pkl"
+    },
+    "Models": [
+        {
+            "name": "xgb_regime_A",
+            "type": "XGBoost",
+            "hyperparams": {
+                "n_estimators": 100,
+                "max_depth": 3,
+                "learning_rate": 0.1,
+                "subsample": 1.0,
+                "colsample_bytree": 1.0
+            },
+            "regimes": [0],
+            "features": [],
+            "model_path": "scripts/xgb_saved/model_A.json"
+        },
+        {
+            "name": "xgb_regime_B",
+            "type": "XGBoost",
+            "hyperparams": {
+                "n_estimators": 100,
+                "max_depth": 3,
+                "learning_rate": 0.1
+            },
+            "regimes": [1],
+            "features": [],
+            "model_path": "scripts/xgb_saved/model_B.json"
+        }
+    ]
+}

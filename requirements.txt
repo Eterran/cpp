@@ -1,0 +1,7 @@
+numpy
+pandas
+xgboost
+scikit-learn
+hmmlearn
+skl2onnx
+onnxmltools

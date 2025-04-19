@@ -2,13 +2,14 @@
 #include "Config.h"
 #include "BacktestEngine.h"
 #include "RandomStrategy.h"
+#include "HMMStrategy.h"
 #include "Utils.h"
 #include <iostream>
 #include <memory>
 #include <string>
 #include <limits>
-#include "ModelInterface.cpp"
-#include "../include/OnnxModelInterface.h"
+#include "OnnxModelInterface.h"
+#include <cstdlib>
 
 #ifndef PYTHON_BINDINGS
 // Helper function to wait for user input before exiting
@@ -25,6 +26,8 @@ void waitForKeypress() {
 int main() {
     try {
         Utils::logMessage("--- C++ Backtester Starting ---");
+        //set python path
+        // std::setenv("PYTHONPATH", "E:\\Python312\\", 1);
 
         // 1. Create and Load Configuration
         Config config;
@@ -65,9 +68,14 @@ int main() {
         // OnnxModelInterface model = OnnxModelInterface();
         // model.PrintModelInfo();
 
-        // 4. Create and Set Strategy
-        //    (Engine passes its config pointer to the strategy during setup)
-        auto strategy = std::make_unique<RandomStrategy>();
+        // 4. Create and Set Strategy based on config
+        std::string stratType = config.getNested<std::string>("/Strategy/Type", "Random");
+        std::unique_ptr<Strategy> strategy;
+        if (stratType == "ML") {
+            strategy = std::make_unique<HMMStrategy>();
+        } else {
+            strategy = std::make_unique<RandomStrategy>();
+        }
         Utils::logMessage("Main: Creating " + strategy->getName() + " strategy.");
         std::cout << "Creating " << strategy->getName() << " strategy..." << std::endl;
         engine->setStrategy(std::move(strategy));
